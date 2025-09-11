@@ -1,0 +1,105 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+const TableBaserow = ({ tableId, tableName }) => {
+    const [columns, setColumns] = useState([]);
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Pobierz kolumny
+    useEffect(() => {
+        const fetchColumns = async () => {
+            try {
+                const response = await axios({
+                    method: "GET",
+                    url: `https://api.baserow.io/api/database/fields/table/${tableId}/`,
+                    headers: {
+                        Authorization: "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC"
+                    }
+                });
+                setColumns(response.data);
+            } catch (err) {
+                setError(err.message);
+            }
+        };
+
+        // Pobierz dane
+        const fetchRows = async () => {
+            try {
+                const response = await axios({
+                    method: "GET",
+                    url: `https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true`,
+                    headers: {
+                        Authorization: "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC"
+                    }
+                });
+                setRows(response.data.results);
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchColumns();
+        fetchRows();
+    }, [tableId]);
+
+    if (loading) return <div>Ładowanie...</div>;
+    if (error) return <div>Błąd: {error}</div>;
+    // Funkcja do aktualizacji komórki
+    const handleCellChange = (rowId, columnName, value) => {
+        setRows(prevRows =>
+            prevRows.map(row =>
+                row.id === rowId ? { ...row, [columnName]: value } : row
+            )
+        );
+    };
+
+    // Funkcja do zapisywania zmian (przykład)
+    const saveChanges = async () => {
+        try {
+            // Tutaj dodaj logikę do zapisywania zmian do API
+            console.log("Zapisywanie zmian:", rows);
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+    return (
+        <div>
+            <h1>Edytowalna tabela (ID: {tableName})</h1>
+            <button onClick={saveChanges}>Zapisz zmiany</button>
+            <table>
+                <thead>
+                    <tr>
+                        {columns.map(column => (
+                            <th key={column.id}>{column.name}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(row => (
+                        <tr key={row.id}>
+                            {columns.map(column => (
+                                <td key={column.id}>
+                                    {column.read_only ? (
+                                        <span>{String(row[column.name]?.value || row[column.name] || "")}</span>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={String(row[column.name]?.value || row[column.name] || "")}
+                                            onChange={(e) => handleCellChange(row.id, column.name, e.target.value)}
+                                        />
+                                    )}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+export default TableBaserow;
