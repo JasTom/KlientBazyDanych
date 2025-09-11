@@ -4,6 +4,21 @@ import apiClient from './apiClient';
 const TableBaserow = ({ tableId, tableName }) => {
     const [columns, setColumns] = useState([]);
     const [rows, setRows] = useState([]);
+    const [count, setCount] = useState(0);
+    const [page, setPage] = useState(1);
+    const [size, setSize] = useState(100);
+    const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [orderBy, setOrderBy] = useState('');
+    const [orderField, setOrderField] = useState('');
+    const [orderDir, setOrderDir] = useState('asc'); // 'asc' | 'desc'
+    const [filterType, setFilterType] = useState('AND');
+    const [filtersJson, setFiltersJson] = useState('');
+    const [filterField, setFilterField] = useState('');
+    const [filterOp, setFilterOp] = useState('');
+    const [filterValue, setFilterValue] = useState('');
+    const [filtersList, setFiltersList] = useState([]); // {field, type, value}
+    const [controlsOpen, setControlsOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -55,6 +70,30 @@ const TableBaserow = ({ tableId, tableName }) => {
         if (type.includes('lookup') || type.includes('search')) return '🔍';
         if (type.includes('collaborator') || type.includes('created_by') || type.includes('last_modified_by')) return '👤';
         return '▫️';
+    };
+
+    const getOpsForType = (columnType) => {
+        const t = String(columnType || '').toLowerCase();
+        const common = ['equal','not_equal','contains','contains_not','contains_word','doesnt_contain_word','empty','not_empty'];
+        if (t.includes('boolean')) return ['boolean'];
+        if (t.includes('date')) return ['date_is','date_is_not','date_is_before','date_is_on_or_before','date_is_after','date_is_on_or_after','date_is_within','date_equals_day_of_month','empty','not_empty'];
+        if (t.includes('number')) return ['equal','not_equal','higher_than','higher_than_or_equal','lower_than','lower_than_or_equal','is_even_and_whole','empty','not_empty'];
+        if (t.includes('single_select')) return ['single_select_equal','single_select_not_equal','single_select_is_any_of','single_select_is_none_of','empty','not_empty'];
+        if (t.includes('multiple_select')) return ['multiple_select_has','empty','not_empty'];
+        if (t.includes('link_row')) return ['link_row_has','link_row_has_not','link_row_contains','link_row_not_contains','empty','not_empty'];
+        if (t.includes('collaborator')) return ['user_is','user_is_not','multiple_collaborators_has','multiple_collaborators_has_not','empty','not_empty'];
+        if (t.includes('file')) return ['filename_contains','has_file_type','files_lower_than','empty','not_empty'];
+        return common;
+    };
+
+    const rebuildFiltersJson = (list, typeLogic) => {
+        if (!list.length) { setFiltersJson(''); return; }
+        try {
+            const payload = { filter_type: typeLogic || 'AND', filters: list.map(f => ({ field: f.field, type: f.type, value: f.value })) };
+            setFiltersJson(JSON.stringify(payload));
+        } catch (_) {
+            setFiltersJson('');
+        }
     };
 
     const formatCellDisplay = (column, raw) => {
@@ -153,10 +192,26 @@ const TableBaserow = ({ tableId, tableName }) => {
         // Pobierz dane
         const fetchRows = async () => {
             try {
-                const response = await apiClient.get(`/database/rows/table/${tableId}/`, { params: { user_field_names: true } });
+                const clampedSize = Math.min(200, Math.max(1, Number(size) || 100));
+                const params = {
+                    user_field_names: true,
+                    page,
+                    size: clampedSize,
+                };
+                if (debouncedSearch) params.search = debouncedSearch;
+                const builtOrder = orderField ? `${orderDir === 'desc' ? '-' : ''}${orderField}` : '';
+                if (builtOrder) params.order_by = builtOrder;
+                if (filtersJson) {
+                    params.filters = filtersJson;
+                    if (filterType) params.filter_type = filterType;
+                }
+
+                const response = await apiClient.get(`/database/rows/table/${tableId}/`, { params });
                 setRows(response.data.results);
+                setCount(response.data.count ?? 0);
             } catch (err) {
-                setError(err.message);
+                const apiMsg = err?.response?.data ? JSON.stringify(err.response.data) : err.message;
+                setError(apiMsg);
             } finally {
                 setLoading(false);
             }
@@ -164,7 +219,13 @@ const TableBaserow = ({ tableId, tableName }) => {
 
         fetchColumns();
         fetchRows();
-    }, [tableId]);
+    }, [tableId, page, size, debouncedSearch, orderField, orderDir, filterType, filtersJson]);
+
+    // Debounce dla pola "Szukaj"
+    useEffect(() => {
+        const id = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+        return () => clearTimeout(id);
+    }, [search]);
 
     if (loading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
@@ -190,7 +251,107 @@ const TableBaserow = ({ tableId, tableName }) => {
         <div className="container-fluid my-4">
             <div className="d-flex align-items-center justify-content-between mb-3">
                 <h1 className="h4 mb-0">Edytowalna tabela (ID: {tableName})</h1>
-                <button className="btn btn-primary" onClick={saveChanges}>Zapisz zmiany</button>
+                <div className="d-flex gap-2">
+                    <button className="btn btn-outline-secondary" onClick={() => setControlsOpen(v => !v)} aria-expanded={controlsOpen} aria-controls="filtersCollapse">
+                        {controlsOpen ? 'Ukryj wyszukiwanie' : 'Pokaż wyszukiwanie'}
+                    </button>
+                    <button className="btn btn-primary" onClick={saveChanges}>Zapisz zmiany</button>
+                </div>
+            </div>
+            <div className="card mb-3" id="filtersCollapse">
+                <div className={`card-body ${controlsOpen ? '' : 'd-none'}`}>
+                    <div className="row g-2 align-items-end">
+                        <div className="col-sm-6 col-md-4 col-lg-3">
+                            <label className="form-label">Szukaj</label>
+                            <input className="form-control" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="fraza..." />
+                        </div>
+                        <div className="col-sm-6 col-md-4 col-lg-3">
+                            <label className="form-label">Sortuj po</label>
+                            <select className="form-select" value={orderField} onChange={(e) => { setPage(1); setOrderField(e.target.value); }}>
+                                <option value="">(brak)</option>
+                                {columns.map(col => (
+                                    <option key={col.id} value={col.name}>{col.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="col-sm-6 col-md-2 col-lg-2">
+                            <label className="form-label d-block">Kierunek</label>
+                            <div className="btn-group w-100" role="group">
+                                <button type="button" className={`btn btn-outline-secondary ${orderDir === 'asc' ? 'active' : ''}`} onClick={() => { setPage(1); setOrderDir('asc'); }}>A-Z</button>
+                                <button type="button" className={`btn btn-outline-secondary ${orderDir === 'desc' ? 'active' : ''}`} onClick={() => { setPage(1); setOrderDir('desc'); }}>Z-A</button>
+                            </div>
+                        </div>
+                        
+                        <div className="col-sm-6 col-md-3 col-lg-2">
+                            <label className="form-label">Rozmiar strony</label>
+                            <select className="form-select" value={size} onChange={(e) => { setPage(1); setSize(Number(e.target.value)); }}>
+                                {[10,20,50,100,200].map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="col-12">
+                            <div className="row g-2 align-items-end">
+                                <div className="col-sm-6 col-md-3">
+                                    <label className="form-label">Pole</label>
+                                    <select className="form-select" value={filterField} onChange={(e) => { setFilterField(e.target.value); setFilterOp(''); }}>
+                                        <option value="">(wybierz pole)</option>
+                                        {columns.map(col => (
+                                            <option key={col.id} value={col.name}>{col.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="col-sm-6 col-md-3">
+                                    <label className="form-label">Operator</label>
+                                    <select className="form-select" value={filterOp} onChange={(e) => setFilterOp(e.target.value)} disabled={!filterField}>
+                                        <option value="">(wybierz operator)</option>
+                                        {(() => {
+                                            const col = columns.find(c => c.name === filterField);
+                                            const ops = getOpsForType(col?.type);
+                                            return ops.map(op => <option key={op} value={op}>{op}</option>);
+                                        })()}
+                                    </select>
+                                </div>
+                                <div className="col-sm-6 col-md-4">
+                                    <label className="form-label">Wartość</label>
+                                    <input className="form-control" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterOp} placeholder="wartość (zgodnie z API)" />
+                                </div>
+                                <div className="col-sm-6 col-md-2 d-grid">
+                                    <button className="btn btn-outline-primary" disabled={!filterField || !filterOp} onClick={() => {
+                                        const next = [...filtersList, { field: filterField, type: filterOp, value: filterValue }];
+                                        setFiltersList(next);
+                                        rebuildFiltersJson(next, filterType);
+                                        setPage(1);
+                                        setFilterValue('');
+                                    }}>Dodaj filtr</button>
+                                </div>
+                            </div>
+                            {filtersList.length > 0 && (
+                                <div className="mt-2 d-flex align-items-center flex-wrap gap-2">
+                                    <label className="form-label me-2 mb-0">Typ łączenia</label>
+                                    <select className="form-select form-select-sm w-auto" value={filterType} onChange={(e) => { setFilterType(e.target.value); rebuildFiltersJson(filtersList, e.target.value); setPage(1); }}>
+                                        <option value="AND">AND</option>
+                                        <option value="OR">OR</option>
+                                    </select>
+                                    {filtersList.map((f, idx) => (
+                                        <span key={idx} className="badge text-bg-secondary">
+                                            {f.field} {f.type} {String(f.value)}
+                                            <button type="button" className="btn btn-sm btn-link text-white ms-2 p-0" onClick={() => {
+                                                const next = filtersList.filter((_, i) => i !== idx);
+                                                setFiltersList(next);
+                                                rebuildFiltersJson(next, filterType);
+                                                setPage(1);
+                                            }}>×</button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="col-sm-6 col-md-3 col-lg-2 d-flex gap-2">
+                            <button className="btn btn-outline-secondary w-100" onClick={() => { setSearch(''); setOrderField(''); setOrderDir('asc'); setFilterType('AND'); setFiltersJson(''); setFiltersList([]); setFilterField(''); setFilterOp(''); setFilterValue(''); setPage(1); }}>Wyczyść</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div className="table-responsive">
                 <table className="table table-striped table-bordered table-hover table-sm align-middle">
@@ -230,6 +391,16 @@ const TableBaserow = ({ tableId, tableName }) => {
                         ))}
                     </tbody>
                 </table>
+            </div>
+            <div className="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                    <span className="me-2">Razem: {count}</span>
+                    <span>Strona {page} z {Math.max(1, Math.ceil(count / Math.max(1, size)))}</span>
+                </div>
+                <div className="btn-group">
+                    <button className="btn btn-outline-secondary" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Poprzednia</button>
+                    <button className="btn btn-outline-secondary" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</button>
+                </div>
             </div>
         </div>
     );
