@@ -97,7 +97,11 @@ const TableBaserow = ({ tableId, tableName }) => {
     const rebuildFiltersJson = (list, typeLogic) => {
         if (!list.length) { setFiltersJson(''); return; }
         try {
-            const payload = { filter_type: typeLogic || 'AND', filters: list.map(f => ({ field: f.field, type: f.type, value: f.value })) };
+            const payload = {
+                filter_type: typeLogic || 'AND',
+                filters: list.map(f => ({ type: f.type, field: f.field, value: f.value })),
+                groups: []
+            };
             setFiltersJson(JSON.stringify(payload));
         } catch (_) {
             setFiltersJson('');
@@ -301,12 +305,17 @@ const TableBaserow = ({ tableId, tableName }) => {
                 if (debouncedSearch) params.search = debouncedSearch;
                 const builtOrder = orderField ? `${orderDir === 'desc' ? '-' : ''}${orderField}` : '';
                 if (builtOrder) params.order_by = builtOrder;
+                // Zbuduj URL z poprawnym enkodowaniem filtra
+                const usp = new URLSearchParams();
+                Object.entries(params).forEach(([k, v]) => {
+                    if (v !== undefined && v !== null && v !== '') usp.append(k, String(v));
+                });
+                let url = `/database/rows/table/${tableId}/?${usp.toString()}`;
                 if (filtersJson) {
-                    params.filters = filtersJson;
-                    if (filterType) params.filter_type = filterType;
+                    url += `&filters=${encodeURIComponent(filtersJson)}`;
                 }
 
-                const response = await apiClient.get(`/database/rows/table/${tableId}/`, { params });
+                const response = await apiClient.get(url);
                 setRows(response.data.results);
                 setCount(response.data.count ?? 0);
             } catch (err) {
