@@ -21,8 +21,6 @@ function App() {
       <Route path="/tabela-baserow/:id/:name" element={
         <>
           <Header />
-          {/* <TableBaserow tableId={261885} tableName={"WWW"} />
-           */}
           <TableBaserowWrapper />
           <Footer />
         </>

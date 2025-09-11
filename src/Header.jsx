@@ -5,7 +5,7 @@ import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import apiClient from "./apiClient";
 
 function Header() {
     const [tables, setTables] = useState([]);
@@ -15,16 +15,7 @@ function Header() {
     useEffect(() => {
         const fetchTables = async () => {
             try {
-                const response = await axios({
-                    method: "GET",
-                    url: "https://api.baserow.io/api/database/tables/all-tables/",
-                    // url: "http://baza.ace.local:10220/api/database/tables/all-tables/",
-                    headers: {
-                        Authorization: "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC" // klucz baserow.io
-                        // Authorization: "Token 9gEyWijcJY2kdmAtVt8iOI6Jhy36QQ4h" // Klucz procedury 
-                        // Authorization: "Token oU6JGixHrXy5pW6kyDNrL12FQWWop6DF" // Klucz menadżer
-                    }
-                });
+                const response = await apiClient.get("/database/tables/all-tables/");
                 setTables(response.data);
             } catch (err) {
                 setError(err.message);
@@ -56,17 +47,6 @@ function Header() {
             </Container>
         </Navbar>
     );
-
-    // return (
-    //     <header>
-    //         <img src={zdrochem_logo}></img>
-    //         <nav>
-    //             <ul>
-    //             </ul>
-    //             <hr></hr>
-    //         </nav>
-    //     </header>
-    // );
 }
 
 export default Header

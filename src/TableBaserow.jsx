@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const TableBaserow = ({ tableId, tableName }) => {
     const [columns, setColumns] = useState([]);
@@ -11,13 +11,7 @@ const TableBaserow = ({ tableId, tableName }) => {
     useEffect(() => {
         const fetchColumns = async () => {
             try {
-                const response = await axios({
-                    method: "GET",
-                    url: `https://api.baserow.io/api/database/fields/table/${tableId}/`,
-                    headers: {
-                        Authorization: "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC"
-                    }
-                });
+                const response = await apiClient.get(`/database/fields/table/${tableId}/`);
                 setColumns(response.data);
             } catch (err) {
                 setError(err.message);
@@ -27,13 +21,7 @@ const TableBaserow = ({ tableId, tableName }) => {
         // Pobierz dane
         const fetchRows = async () => {
             try {
-                const response = await axios({
-                    method: "GET",
-                    url: `https://api.baserow.io/api/database/rows/table/${tableId}/?user_field_names=true`,
-                    headers: {
-                        Authorization: "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC"
-                    }
-                });
+                const response = await apiClient.get(`/database/rows/table/${tableId}/`, { params: { user_field_names: true } });
                 setRows(response.data.results);
             } catch (err) {
                 setError(err.message);
