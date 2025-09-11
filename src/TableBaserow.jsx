@@ -55,37 +55,42 @@ const TableBaserow = ({ tableId, tableName }) => {
         }
     };
     return (
-        <div>
-            <h1>Edytowalna tabela (ID: {tableName})</h1>
-            <button onClick={saveChanges}>Zapisz zmiany</button>
-            <table>
-                <thead>
-                    <tr>
-                        {columns.map(column => (
-                            <th key={column.id}>{column.name}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map(row => (
-                        <tr key={row.id}>
+        <div className="container my-4">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+                <h1 className="h4 mb-0">Edytowalna tabela (ID: {tableName})</h1>
+                <button className="btn btn-primary" onClick={saveChanges}>Zapisz zmiany</button>
+            </div>
+            <div className="table-responsive">
+                <table className="table table-striped table-bordered table-hover table-sm align-middle">
+                    <thead className="table-dark">
+                        <tr>
                             {columns.map(column => (
-                                <td key={column.id}>
-                                    {column.read_only ? (
-                                        <span>{String(row[column.name]?.value || row[column.name] || "")}</span>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            value={String(row[column.name]?.value || row[column.name] || "")}
-                                            onChange={(e) => handleCellChange(row.id, column.name, e.target.value)}
-                                        />
-                                    )}
-                                </td>
+                                <th key={column.id} scope="col">{column.name}</th>
                             ))}
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {rows.map(row => (
+                            <tr key={row.id}>
+                                {columns.map(column => (
+                                    <td key={column.id}>
+                                        {column.read_only ? (
+                                            <span>{String(row[column.name]?.value || row[column.name] || "")}</span>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                value={String(row[column.name]?.value || row[column.name] || "")}
+                                                onChange={(e) => handleCellChange(row.id, column.name, e.target.value)}
+                                            />
+                                        )}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
