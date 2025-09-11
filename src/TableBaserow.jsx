@@ -187,17 +187,17 @@ const TableBaserow = ({ tableId, tableName }) => {
         }
     };
     return (
-        <div className="container my-4">
+        <div className="container-fluid my-4">
             <div className="d-flex align-items-center justify-content-between mb-3">
                 <h1 className="h4 mb-0">Edytowalna tabela (ID: {tableName})</h1>
                 <button className="btn btn-primary" onClick={saveChanges}>Zapisz zmiany</button>
             </div>
             <div className="table-responsive">
                 <table className="table table-striped table-bordered table-hover table-sm align-middle">
-                    <thead className="table-dark">
+                    <thead className="table-dark text-center">
                         <tr>
                             {columns.map(column => (
-                                <th key={column.id} scope="col">
+                                <th key={column.id} scope="col" className="align-middle">
                                     <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
                                     {column.name}
                                 </th>

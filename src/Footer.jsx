@@ -1,8 +1,8 @@
 
 function Footer() {
     return (
-        <footer>
-            <p>&copy; {new Date().getFullYear()} Zdrochem</p>
+        <footer className="mt-auto py-3 bg-light border-top">
+            <p className="text-center mb-0">&copy; {new Date().getFullYear()} Zdrochem</p>
         </footer>
     );
 

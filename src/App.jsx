@@ -9,6 +9,7 @@ import TableBaserowWrapper from "./TableBaserowWrapper.jsx";
 
 function App() {
   return (
+    <div className="min-vh-100 d-flex flex-column">
     <Routes>
       <Route path="/" element={
         <>
@@ -26,6 +27,7 @@ function App() {
         </>
       } />
     </Routes>
+    </div>
   );
 
 }
