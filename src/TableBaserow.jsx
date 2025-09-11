@@ -19,6 +19,14 @@ const TableBaserow = ({ tableId, tableName }) => {
     const [filterValue, setFilterValue] = useState('');
     const [filtersList, setFiltersList] = useState([]); // {field, type, value}
     const [controlsOpen, setControlsOpen] = useState(false);
+    const [columnWidths, setColumnWidths] = useState({}); // { [columnName]: number }
+    const [isResizing, setIsResizing] = useState(false);
+    const [resizingCol, setResizingCol] = useState(null);
+    const [resizeStartX, setResizeStartX] = useState(0);
+    const [resizeStartWidth, setResizeStartWidth] = useState(0);
+    const [scrollContentWidth, setScrollContentWidth] = useState(0);
+    const tableScrollRef = React.useRef(null);
+    const topScrollRef = React.useRef(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -94,6 +102,98 @@ const TableBaserow = ({ tableId, tableName }) => {
         } catch (_) {
             setFiltersJson('');
         }
+    };
+
+    // Ustaw domyślne szerokości, aby mieściły nazwę kolumny (tylko dla jeszcze nieustawionych)
+    useEffect(() => {
+        if (!columns || columns.length === 0) return;
+        setColumnWidths(prev => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // Przybliżona czcionka nagłówka bootstrapa
+            ctx.font = '600 0.875rem system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+            const next = { ...prev };
+            columns.forEach(col => {
+                const name = String(col.name || '');
+                if (name && next[name] == null) {
+                    const metrics = ctx.measureText(name);
+                    const textWidth = metrics.width;
+                    const padding = 24; // lewy/prawy padding komórki
+                    const iconSpace = 18; // ikonka typu + odstęp
+                    const target = Math.max(60, Math.ceil(textWidth + padding + iconSpace));
+                    next[name] = target;
+                }
+            });
+            return next;
+        });
+    }, [columns]);
+
+    // Obsługa zmiany szerokości kolumn
+    const handleResizeMouseDown = (colName, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentWidth = columnWidths[colName] ?? e.currentTarget.parentElement.getBoundingClientRect().width;
+        setIsResizing(true);
+        setResizingCol(colName);
+        setResizeStartX(e.clientX);
+        setResizeStartWidth(currentWidth);
+    };
+
+    // Persist/restore szerokości kolumn per tabela
+    useEffect(() => {
+        const key = `tbw_${tableId}`;
+        try {
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && typeof parsed === 'object') setColumnWidths(parsed);
+            }
+        } catch (_) { /* ignore */ }
+    }, [tableId]);
+
+    useEffect(() => {
+        if (!isResizing) return;
+        const onMove = (e) => {
+            const delta = e.clientX - resizeStartX;
+            const newWidth = Math.max(60, Math.round(resizeStartWidth + delta));
+            setColumnWidths(prev => ({ ...prev, [resizingCol]: newWidth }));
+        };
+        const onUp = () => {
+            setIsResizing(false);
+            setResizingCol(null);
+            try {
+                const key = `tbw_${tableId}`;
+                localStorage.setItem(key, JSON.stringify(columnWidths));
+            } catch (_) { /* ignore */ }
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        };
+    }, [isResizing, resizeStartX, resizeStartWidth, resizingCol, columnWidths, tableId]);
+
+    // Synchronizacja szerokości paska przewijania i scrollLeft pomiędzy górnym paskiem a kontenerem tabeli
+    useEffect(() => {
+        const updateWidth = () => {
+            const el = tableScrollRef.current;
+            if (el) setScrollContentWidth(el.scrollWidth);
+        };
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, [rows, columns, columnWidths]);
+
+    const syncFromTop = (e) => {
+        const topEl = e.currentTarget;
+        const tbl = tableScrollRef.current;
+        if (tbl && tbl.scrollLeft !== topEl.scrollLeft) tbl.scrollLeft = topEl.scrollLeft;
+    };
+    const syncFromTable = (e) => {
+        const tbl = e.currentTarget;
+        const topEl = topScrollRef.current;
+        if (topEl && topEl.scrollLeft !== tbl.scrollLeft) topEl.scrollLeft = tbl.scrollLeft;
     };
 
     const formatCellDisplay = (column, raw) => {
@@ -251,20 +351,47 @@ const TableBaserow = ({ tableId, tableName }) => {
         <div className="container-fluid my-4">
             <div className="d-flex align-items-center justify-content-between mb-3">
                 <h1 className="h4 mb-0">Edytowalna tabela (ID: {tableName})</h1>
-                <div className="d-flex gap-2">
-                    <button className="btn btn-outline-secondary" onClick={() => setControlsOpen(v => !v)} aria-expanded={controlsOpen} aria-controls="filtersCollapse">
-                        {controlsOpen ? 'Ukryj wyszukiwanie' : 'Pokaż wyszukiwanie'}
-                    </button>
-                    <button className="btn btn-primary" onClick={saveChanges}>Zapisz zmiany</button>
+                <div className="d-flex align-items-center gap-2" style={{ maxWidth: '60%' }}>
+                    <input
+                        className="form-control form-control-sm"
+                        style={{ minWidth: 180 }}
+                        value={search}
+                        onChange={(e) => { setPage(1); setSearch(e.target.value); }}
+                        placeholder="Szukaj..."
+                    />
+                    {(() => {
+                        const hasSortOrFilter = Boolean(orderField) || filtersList.length > 0 || Boolean(search.trim());
+                        return (
+                            <button
+                                className="btn btn-outline-secondary position-relative"
+                                onClick={() => setControlsOpen(v => !v)}
+                                aria-expanded={controlsOpen}
+                                aria-controls="filtersCollapse"
+                            >
+                                {controlsOpen ? 'Ukryj wyszukiwanie' : 'Pokaż wyszukiwanie'}
+                                {hasSortOrFilter && (
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            top: 6,
+                                            right: 6,
+                                            width: 10,
+                                            height: 10,
+                                            borderRadius: '50%',
+                                            backgroundColor: '#dc3545'
+                                        }}
+                                        aria-label="Aktywne sortowanie lub filtr"
+                                        title="Aktywne sortowanie lub filtr"
+                                    />
+                                )}
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
             <div className="card mb-3" id="filtersCollapse">
                 <div className={`card-body ${controlsOpen ? '' : 'd-none'}`}>
                     <div className="row g-2 align-items-end">
-                        <div className="col-sm-6 col-md-4 col-lg-3">
-                            <label className="form-label">Szukaj</label>
-                            <input className="form-control" value={search} onChange={(e) => { setPage(1); setSearch(e.target.value); }} placeholder="fraza..." />
-                        </div>
                         <div className="col-sm-6 col-md-4 col-lg-3">
                             <label className="form-label">Sortuj po</label>
                             <select className="form-select" value={orderField} onChange={(e) => { setPage(1); setOrderField(e.target.value); }}>
@@ -353,44 +480,49 @@ const TableBaserow = ({ tableId, tableName }) => {
                     </div>
                 </div>
             </div>
-            <div className="table-responsive">
-                <table className="table table-striped table-bordered table-hover table-sm align-middle">
+            {/* Górny, zawsze widoczny pasek przewijania zsynchronizowany z tabelą */}
+            <div
+                ref={topScrollRef}
+                onScroll={syncFromTop}
+                style={{ overflowX: 'scroll', scrollbarGutter: 'stable both-edges', height: 16 }}
+                className="mb-1"
+            >
+                <div style={{ width: scrollContentWidth || '100%', height: 1 }} />
+            </div>
+            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'scroll', scrollbarGutter: 'stable both-edges' }}>
+                <table className="table table-striped table-bordered table-hover table-sm align-middle" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <thead className="table-dark text-center">
-                        <tr>
-                            {columns.map(column => (
-                                <th key={column.id} scope="col" className="align-middle">
+                    <tr>
+                        {columns.map(column => (
+                                <th
+                                    key={column.id}
+                                    scope="col"
+                                    className="align-middle"
+                                    style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60 }}
+                                >
                                     <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
                                     {column.name}
+                                    <span
+                                        onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
+                                        style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 8, cursor: 'col-resize', userSelect: 'none', zIndex: 2, background: 'transparent' }}
+                                        title="Przeciągnij, aby zmienić szerokość"
+                                    />
                                 </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(row => (
+                        <tr key={row.id}>
+                            {columns.map(column => (
+                                    <td key={column.id} style={{ width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {formatCellDisplay(column, row[column.name])}
+                                </td>
                             ))}
                         </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map(row => (
-                            <tr key={row.id}>
-                                {columns.map(column => (
-                                    <td key={column.id}>
-                                        {(() => {
-                                            const raw = row[column.name];
-                                            const complex = isComplexValue(raw);
-                                            if (column.read_only || complex) {
-                                                return formatCellDisplay(column, raw);
-                                            }
-                                            return (
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm"
-                                                    value={formatCellValue(raw)}
-                                                    onChange={(e) => handleCellChange(row.id, column.name, e.target.value)}
-                                                />
-                                            );
-                                        })()}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                    ))}
+                </tbody>
+            </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-2">
                 <div>
