@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from './apiClient';
+import RowForm from './RowForm';
 
 const TableBaserow = ({ tableId, tableName }) => {
     const [columns, setColumns] = useState([]);
@@ -19,6 +20,8 @@ const TableBaserow = ({ tableId, tableName }) => {
     const [filterValue, setFilterValue] = useState('');
     const [filtersList, setFiltersList] = useState([]); // {field, type, value}
     const [controlsOpen, setControlsOpen] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [editingRow, setEditingRow] = useState(null);
     const [columnWidths, setColumnWidths] = useState({}); // { [columnName]: number }
     const [isResizing, setIsResizing] = useState(false);
     const [resizingCol, setResizingCol] = useState(null);
@@ -357,24 +360,43 @@ const TableBaserow = ({ tableId, tableName }) => {
 
     if (loading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
-    // Funkcja do aktualizacji komórki
-    const handleCellChange = (rowId, columnName, value) => {
-        setRows(prevRows =>
-            prevRows.map(row =>
-                row.id === rowId ? { ...row, [columnName]: value } : row
-            )
-        );
+    // Funkcje formularza
+    const openAddForm = () => {
+        setEditingRow(null);
+        setShowForm(true);
     };
 
-    // Funkcja do zapisywania zmian (przykład)
-    const saveChanges = async () => {
-        try {
-            // Tutaj dodaj logikę do zapisywania zmian do API
-            console.log("Zapisywanie zmian:", rows);
-        } catch (err) {
-            setError(err.message);
+    const openEditForm = (row) => {
+        setEditingRow(row);
+        setShowForm(true);
+    };
+
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingRow(null);
+    };
+
+    const handleFormSuccess = (action, data) => {
+        if (action === 'created') {
+            setRows(prevRows => [data, ...prevRows]);
+            setCount(prev => prev + 1);
+        } else if (action === 'updated') {
+            setRows(prevRows => prevRows.map(row => row.id === data.id ? data : row));
         }
     };
+
+    const deleteRow = async (rowId) => {
+        if (!window.confirm('Czy na pewno chcesz usunąć ten wiersz?')) return;
+        try {
+            await apiClient.delete(`/database/rows/table/${tableId}/${rowId}/`);
+            setRows(prevRows => prevRows.filter(row => row.id !== rowId));
+            setCount(prev => prev - 1);
+        } catch (err) {
+            const apiMsg = err?.response?.data ? JSON.stringify(err.response.data) : err.message;
+            setError(apiMsg);
+        }
+    };
+
     return (
         <div className="container-fluid my-4">
             <div className="d-flex align-items-center justify-content-between mb-3">
@@ -387,6 +409,9 @@ const TableBaserow = ({ tableId, tableName }) => {
                         onChange={(e) => { setPage(1); setSearch(e.target.value); }}
                         placeholder="Szukaj..."
                     />
+                    <button className="btn btn-success btn-sm" onClick={openAddForm}>
+                        + Dodaj wiersz
+                    </button>
                     {(() => {
                         const hasSortOrFilter = Boolean(orderField) || filtersList.length > 0 || Boolean(search.trim());
                         return (
@@ -522,33 +547,46 @@ const TableBaserow = ({ tableId, tableName }) => {
                     <thead className="table-dark text-center">
                     <tr>
                         {columns.map(column => (
-                                <th
-                                    key={column.id}
-                                    scope="col"
-                                    className="align-middle"
-                                    style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60 }}
-                                >
-                                    <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
-                                    {column.name}
-                                    <span
-                                        onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
-                                        style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 8, cursor: 'col-resize', userSelect: 'none', zIndex: 2, background: 'transparent' }}
-                                        title="Przeciągnij, aby zmienić szerokość"
-                                    />
-                                </th>
+                            <th
+                                key={column.id}
+                                scope="col"
+                                className="align-middle"
+                                style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60 }}
+                            >
+                                <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
+                                {column.name}
+                                <span
+                                    onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
+                                    style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 8, cursor: 'col-resize', userSelect: 'none', zIndex: 2, background: 'transparent' }}
+                                    title="Przeciągnij, aby zmienić szerokość"
+                                />
+                            </th>
                         ))}
+                        <th scope="col" className="align-middle" style={{ width: 120, textAlign: 'center' }}>
+                            Akcje
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {rows.map(row => (
-                        <tr key={row.id}>
-                            {columns.map(column => (
+                        {rows.map(row => (
+                            <tr key={row.id}>
+                                {columns.map(column => (
                                     <td key={column.id} style={{ width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {formatCellDisplay(column, row[column.name])}
+                                    </td>
+                                ))}
+                                <td style={{ width: 120, textAlign: 'center' }}>
+                                    <div className="btn-group btn-group-sm">
+                                        <button className="btn btn-outline-primary" onClick={() => openEditForm(row)} title="Edytuj">
+                                            ✏️
+                                        </button>
+                                        <button className="btn btn-outline-danger" onClick={() => deleteRow(row.id)} title="Usuń">
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </td>
-                            ))}
-                        </tr>
-                    ))}
+                            </tr>
+                        ))}
                 </tbody>
             </table>
             </div>
@@ -562,6 +600,17 @@ const TableBaserow = ({ tableId, tableName }) => {
                     <button className="btn btn-outline-secondary" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</button>
                 </div>
             </div>
+
+            {/* Formularz dodawania/edycji wierszy */}
+            {showForm && (
+                <RowForm
+                    tableId={tableId}
+                    columns={columns}
+                    editingRow={editingRow}
+                    onClose={closeForm}
+                    onSuccess={handleFormSuccess}
+                />
+            )}
         </div>
     );
 };
