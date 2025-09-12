@@ -26,6 +26,38 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         return String(rawValue);
     };
 
+    const getSelectValue = (fieldValue, fieldType) => {
+        if (fieldType === 'multiple_select') {
+            if (Array.isArray(fieldValue)) {
+                return fieldValue.map(item => {
+                    if (typeof item === 'object' && item.id) {
+                        return item.id;
+                    }
+                    return item;
+                });
+            }
+            return [];
+        } else if (fieldType === 'single_select') {
+            if (fieldValue && typeof fieldValue === 'object' && fieldValue.id) {
+                return fieldValue.id;
+            }
+            return fieldValue || '';
+        }
+        return fieldValue;
+    };
+
+    const handleSelectChange = (fieldName, fieldType, selectedValue, column) => {
+        if (fieldType === 'multiple_select') {
+            // Dla API Baserow przesyłamy tylko tablicę ID
+            const selectedIds = Array.from(selectedValue).map(optionValue => parseInt(optionValue));
+            handleFormChange(fieldName, selectedIds);
+        } else if (fieldType === 'single_select') {
+            // Dla API Baserow przesyłamy tylko ID
+            const selectedId = selectedValue ? parseInt(selectedValue) : null;
+            handleFormChange(fieldName, selectedId);
+        }
+    };
+
     const handleFormChange = (fieldName, value) => {
         setFormData(prev => ({ ...prev, [fieldName]: value }));
     };
@@ -38,11 +70,11 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         try {
             if (editingRow) {
                 // Edycja istniejącego wiersza
-                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/`, formData);
+                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, formData);
                 onSuccess('updated', response.data);
             } else {
                 // Dodawanie nowego wiersza
-                const response = await apiClient.post(`/database/rows/table/${tableId}/`, formData);
+                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, formData);
                 onSuccess('created', response.data);
             }
             onClose();
@@ -123,16 +155,80 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </select>
                                             )}
                                             
-                                            {/* Select fields */}
-                                            {(fieldType.includes('single_select') || fieldType.includes('multiple_select')) && (
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={fieldValue}
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.value)}
-                                                    placeholder="Wprowadź wartość..."
+                                            {/* Single Select fields */}
+                                            {fieldType === 'single_select' && (
+                                                <select
+                                                    className="form-select"
+                                                    value={getSelectValue(fieldValue, 'single_select')}
+                                                    onChange={(e) => handleSelectChange(fieldName, 'single_select', e.target.value, column)}
                                                     required={column.primary}
-                                                />
+                                                >
+                                                    <option value="">Wybierz opcję...</option>
+                                                    {column.select_options && column.select_options.map(option => (
+                                                        <option key={option.id} value={option.id}>
+                                                            {option.value}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            
+                                            {/* Multiple Select fields */}
+                                            {fieldType === 'multiple_select' && (
+                                                <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                    {column.select_options && column.select_options.map(option => {
+                                                        const isSelected = Array.isArray(fieldValue) && 
+                                                            fieldValue.some(item => 
+                                                                (typeof item === 'object' && item.id === option.id) || 
+                                                                item === option.id
+                                                            );
+                                                        return (
+                                                            <div key={option.id} className="form-check">
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    id={`${fieldName}_${option.id}`}
+                                                                    checked={isSelected}
+                                                                    onChange={(e) => {
+                                                                        const currentValues = Array.isArray(fieldValue) ? fieldValue : [];
+                                                                        let newValues;
+                                                                        
+                                                                        if (e.target.checked) {
+                                                                            // Dodaj ID opcji
+                                                                            newValues = [...currentValues, option.id];
+                                                                        } else {
+                                                                            // Usuń ID opcji
+                                                                            newValues = currentValues.filter(item => 
+                                                                                (typeof item === 'object' && item.id !== option.id) || 
+                                                                                item !== option.id
+                                                                            );
+                                                                        }
+                                                                        handleFormChange(fieldName, newValues);
+                                                                    }}
+                                                                />
+                                                                <label 
+                                                                    className="form-check-label" 
+                                                                    htmlFor={`${fieldName}_${option.id}`}
+                                                                    style={{ 
+                                                                        color: option.color === 'light-gray' ? '#6c757d' : 
+                                                                               option.color === 'light-pink' ? '#e83e8c' : 
+                                                                               option.color === 'brown' ? '#8b4513' : 
+                                                                               option.color === 'darker-cyan' ? '#20c997' : 
+                                                                               option.color === 'light-green' ? '#28a745' : 'inherit'
+                                                                    }}
+                                                                >
+                                                                    {option.value}
+                                                                </label>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {column.primary && (
+                                                        <input 
+                                                            type="hidden" 
+                                                            value={Array.isArray(fieldValue) && fieldValue.length > 0 ? 'selected' : ''} 
+                                                            required 
+                                                        />
+                                                    )}
+                                                </div>
                                             )}
                                             
                                             {/* File fields */}
