@@ -179,12 +179,26 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
 
     const toggleRowSelection = (fieldName, rowId) => {
         const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
-        const isSelected = currentValues.includes(rowId);
+        
+        // Sprawdź czy wiersz jest już wybrany, uwzględniając obiekty
+        const isSelected = currentValues.some(item => {
+            if (typeof item === 'object' && item !== null && item.id) {
+                return item.id === rowId;
+            }
+            return item === rowId;
+        });
         
         let newValues;
         if (isSelected) {
-            newValues = currentValues.filter(id => id !== rowId);
+            // Usuń wiersz
+            newValues = currentValues.filter(item => {
+                if (typeof item === 'object' && item !== null && item.id) {
+                    return item.id !== rowId;
+                }
+                return item !== rowId;
+            });
         } else {
+            // Dodaj wiersz
             newValues = [...currentValues, rowId];
         }
         
@@ -220,7 +234,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     // Usuwanie wybranej pozycji
     const removeSelectedRow = (fieldName, rowId) => {
         const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
-        const newValues = currentValues.filter(id => id !== rowId);
+        const newValues = currentValues.filter(item => {
+            // Obsłuż zarówno obiekty jak i bezpośrednie ID
+            if (typeof item === 'object' && item !== null && item.id) {
+                return item.id !== rowId;
+            }
+            return item !== rowId;
+        });
         handleFormChange(fieldName, newValues);
     };
 
@@ -254,19 +274,39 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     // Usuwanie wybranej opcji multiple_select
     const removeSelectedOption = (fieldName, optionId) => {
         const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
-        const newValues = currentValues.filter(id => id !== optionId);
+        const newValues = currentValues.filter(item => {
+            // Obsłuż zarówno obiekty jak i bezpośrednie ID
+            if (typeof item === 'object' && item !== null && item.id) {
+                return item.id !== optionId;
+            }
+            return item !== optionId;
+        });
         handleFormChange(fieldName, newValues);
     };
 
     // Toggle opcji multiple_select
     const toggleOptionSelection = (fieldName, optionId) => {
         const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
-        const isSelected = currentValues.includes(optionId);
+        
+        // Sprawdź czy opcja jest już wybrana, uwzględniając obiekty
+        const isSelected = currentValues.some(item => {
+            if (typeof item === 'object' && item !== null && item.id) {
+                return item.id === optionId;
+            }
+            return item === optionId;
+        });
         
         let newValues;
         if (isSelected) {
-            newValues = currentValues.filter(id => id !== optionId);
+            // Usuń opcję
+            newValues = currentValues.filter(item => {
+                if (typeof item === 'object' && item !== null && item.id) {
+                    return item.id !== optionId;
+                }
+                return item !== optionId;
+            });
         } else {
+            // Dodaj opcję
             newValues = [...currentValues, optionId];
         }
         
@@ -302,10 +342,10 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                 // Sprawdź czy pole link_row pozwala na wiele relacji
                 if (column && column.type === 'link_row') {
                     if (column.link_row_multiple_relationships === false || ids.length <= 1) {
-                        // Pojedyncza relacja - weź tylko pierwszy element
-                        cleaned[fieldName] = ids.length > 0 ? ids[0] : null;
+                        // Pojedyncza relacja - weź tylko pierwszy element lub pustą tablicę
+                        cleaned[fieldName] = ids.length > 0 ? ids[0] : [];
                     } else {
-                        // Wiele relacji - wyślij tablicę
+                        // Wiele relacji - wyślij tablicę (nawet pustą)
                         cleaned[fieldName] = ids;
                     }
                 } else {
@@ -315,6 +355,9 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             } else if (typeof value === 'object' && value !== null && value.id) {
                 // Pojedynczy obiekt - zostaw tylko ID
                 cleaned[fieldName] = value.id;
+            } else if (column && column.type === 'link_row' && (value === null || value === undefined || value === '')) {
+                // Puste pole link_row - wyślij pustą tablicę zamiast null
+                cleaned[fieldName] = [];
             }
         });
         
