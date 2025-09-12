@@ -450,7 +450,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                         >
                                                             {(() => {
                                                                 const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
-                                                                const selectedOptions = (column.select_options || []).filter(option => selectedIds.includes(option.id));
+                                                                // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
+                                                                const ids = selectedIds.map(item => {
+                                                                    if (typeof item === 'object' && item !== null && item.id) {
+                                                                        return item.id;
+                                                                    }
+                                                                    return item;
+                                                                });
+                                                                const selectedOptions = (column.select_options || []).filter(option => ids.includes(option.id));
                                                                 
                                                                 if (selectedOptions.length === 0) {
                                                                     return (
@@ -525,7 +532,15 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                         }
                                                                         
                                                                         return filteredOptions.map(option => {
-                                                                            const isSelected = Array.isArray(fieldValue) && fieldValue.includes(option.id);
+                                                                            // Sprawdź czy opcja jest wybrana, uwzględniając obiekty z API
+                                                                            const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
+                                                                            const ids = selectedIds.map(item => {
+                                                                                if (typeof item === 'object' && item !== null && item.id) {
+                                                                                    return item.id;
+                                                                                }
+                                                                                return item;
+                                                                            });
+                                                                            const isSelected = ids.includes(option.id);
                                                                             
                                                                             return (
                                                                                 <div
@@ -596,7 +611,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                             >
                                                                 {(() => {
                                                                     const selectedIds = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
-                                                                    const selectedRows = (linkRowData[fieldName]?.rows || []).filter(row => selectedIds.includes(row.id));
+                                                                    // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
+                                                                    const ids = selectedIds.map(item => {
+                                                                        if (typeof item === 'object' && item !== null && item.id) {
+                                                                            return item.id;
+                                                                        }
+                                                                        return item;
+                                                                    });
+                                                                    const selectedRows = (linkRowData[fieldName]?.rows || []).filter(row => ids.includes(row.id));
                                                                     const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
                                                                     const allowsMultiple = column.link_row_multiple_relationships !== false;
                                                                     
@@ -668,7 +690,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             
                                                                         return filteredRows.map(row => {
                                                                             const currentValue = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
-                                                                            const isSelected = currentValue.includes(row.id);
+                                                                            // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
+                                                                            const ids = currentValue.map(item => {
+                                                                                if (typeof item === 'object' && item !== null && item.id) {
+                                                                                    return item.id;
+                                                                                }
+                                                                                return item;
+                                                                            });
+                                                                            const isSelected = ids.includes(row.id);
                                                                             const displayText = row[primaryFieldName] || `ID: ${row.id}`;
                                                                             const allowsMultiple = column.link_row_multiple_relationships !== false;
                                                                             
