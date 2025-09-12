@@ -273,19 +273,70 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         handleFormChange(fieldName, newValues);
     };
 
+    // Funkcja czyszcząca dane przed wysłaniem do API
+    const cleanFormDataForAPI = (data) => {
+        const cleaned = { ...data };
+        
+        Object.keys(cleaned).forEach(fieldName => {
+            const value = cleaned[fieldName];
+            
+            // Znajdź kolumnę dla tego pola
+            const column = columns.find(col => col.name === fieldName);
+            
+            // Pomiń pola tylko do odczytu
+            if (column && (column.read_only || column.type === 'formula' || column.type === 'lookup' || column.type === 'count' || column.type === 'rollup')) {
+                delete cleaned[fieldName];
+                return;
+            }
+            
+            // Dla pól select (single_select, multiple_select, link_row)
+            if (Array.isArray(value)) {
+                // Tablica - zostaw tylko ID
+                const ids = value.map(item => {
+                    if (typeof item === 'object' && item !== null && item.id) {
+                        return item.id;
+                    }
+                    return item;
+                });
+                
+                // Sprawdź czy pole link_row pozwala na wiele relacji
+                if (column && column.type === 'link_row') {
+                    if (column.link_row_multiple_relationships === false || ids.length <= 1) {
+                        // Pojedyncza relacja - weź tylko pierwszy element
+                        cleaned[fieldName] = ids.length > 0 ? ids[0] : null;
+                    } else {
+                        // Wiele relacji - wyślij tablicę
+                        cleaned[fieldName] = ids;
+                    }
+                } else {
+                    // Dla innych typów pól (multiple_select) - zawsze tablica
+                    cleaned[fieldName] = ids;
+                }
+            } else if (typeof value === 'object' && value !== null && value.id) {
+                // Pojedynczy obiekt - zostaw tylko ID
+                cleaned[fieldName] = value.id;
+            }
+        });
+        
+        return cleaned;
+    };
+
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
         
         try {
+            // Wyczyść dane przed wysłaniem
+            const cleanedData = cleanFormDataForAPI(formData);
+            
             if (editingRow) {
                 // Edycja istniejącego wiersza
-                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, formData);
+                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, cleanedData);
                 onSuccess('updated', response.data);
             } else {
                 // Dodawanie nowego wiersza
-                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, formData);
+                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, cleanedData);
                 onSuccess('created', response.data);
             }
             onClose();
@@ -533,7 +584,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                         </div>
                                                     ) : (
                                                         <div className="position-relative link-row-dropdown">
-                                                            {/* Wyświetlanie wybranych pozycji jako tagi */}
+                                                            {/* Wyświetlanie wybranych pozycji */}
                                                             <div 
                                                                 className="border rounded p-2 d-flex flex-wrap align-items-center gap-1" 
                                                                 style={{ 
@@ -544,14 +595,15 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                 onClick={() => toggleDropdown(fieldName)}
                                                             >
                                                                 {(() => {
-                                                                    const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
+                                                                    const selectedIds = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
                                                                     const selectedRows = (linkRowData[fieldName]?.rows || []).filter(row => selectedIds.includes(row.id));
                                                                     const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+                                                                    const allowsMultiple = column.link_row_multiple_relationships !== false;
                                                                     
                                                                     if (selectedRows.length === 0) {
                                                                         return (
                                                                             <span className="text-muted">
-                                                                                Wybierz opcje...
+                                                                                {allowsMultiple ? 'Wybierz opcje...' : 'Wybierz opcję...'}
                                                                             </span>
                                                                         );
                                                                     }
@@ -567,7 +619,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             }}
                                                                         >
                                                                             {row[primaryFieldName] || `ID: ${row.id}`}
-                                                                            <span style={{ cursor: 'pointer' }}>×</span>
+                                                                            {allowsMultiple && <span style={{ cursor: 'pointer' }}>×</span>}
                                                                         </span>
                                                                     ));
                                                                 })()}
@@ -614,17 +666,28 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                 );
                                                                             }
                                                                             
-                                                                            return filteredRows.map(row => {
-                                                                                const isSelected = Array.isArray(fieldValue) && fieldValue.includes(row.id);
-                                                                                const displayText = row[primaryFieldName] || `ID: ${row.id}`;
-                                                                                
-                                                                                return (
-                                                                                    <div
-                                                                                        key={row.id}
-                                                                                        className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
-                                                                                        style={{ cursor: 'pointer' }}
-                                                                                        onClick={() => toggleRowSelection(fieldName, row.id)}
-                                                                                    >
+                                                                        return filteredRows.map(row => {
+                                                                            const currentValue = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
+                                                                            const isSelected = currentValue.includes(row.id);
+                                                                            const displayText = row[primaryFieldName] || `ID: ${row.id}`;
+                                                                            const allowsMultiple = column.link_row_multiple_relationships !== false;
+                                                                            
+                                                                            return (
+                                                                                <div
+                                                                                    key={row.id}
+                                                                                    className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
+                                                                                    style={{ cursor: 'pointer' }}
+                                                                                    onClick={() => {
+                                                                                        if (allowsMultiple) {
+                                                                                            toggleRowSelection(fieldName, row.id);
+                                                                                        } else {
+                                                                                            // Pojedyncza relacja - zastąp aktualny wybór
+                                                                                            handleFormChange(fieldName, row.id);
+                                                                                            setOpenDropdowns(prev => ({ ...prev, [fieldName]: false }));
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    {allowsMultiple ? (
                                                                                         <input
                                                                                             type="checkbox"
                                                                                             className="form-check-input me-2"
@@ -632,10 +695,19 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                             onChange={() => {}} // Obsługiwane przez onClick na div
                                                                                             readOnly
                                                                                         />
-                                                                                        <span className="text-truncate">{displayText}</span>
-                                                                                    </div>
-                                                                                );
-                                                                            });
+                                                                                    ) : (
+                                                                                        <input
+                                                                                            type="radio"
+                                                                                            className="form-check-input me-2"
+                                                                                            checked={isSelected}
+                                                                                            onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                            readOnly
+                                                                                        />
+                                                                                    )}
+                                                                                    <span className="text-truncate">{displayText}</span>
+                                                                                </div>
+                                                                            );
+                                                                        });
                                                                         })()}
                                                                     </div>
                                                                 </div>
