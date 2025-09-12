@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient from './apiClient';
+import apiClient, { AUTH_TOKEN } from './apiClient';
 import { Form, Dropdown, ButtonGroup, Button } from 'react-bootstrap';
 
 const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
@@ -10,6 +10,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     const [openDropdowns, setOpenDropdowns] = useState({}); // { [fieldName]: boolean }
     const [searchTerms, setSearchTerms] = useState({}); // { [fieldName]: string }
     const [selectSearchTerms, setSelectSearchTerms] = useState({}); // { [fieldName]: string } dla multiple_select
+    const [uploadingFiles, setUploadingFiles] = useState({}); // { [fieldName]: boolean }
 
     const formatCellValue = (rawValue) => {
         if (rawValue === null || rawValue === undefined) return "";
@@ -260,6 +261,56 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         }));
     };
 
+    // Przesyłanie pliku do API Baserow
+    const uploadFile = async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await apiClient.post('/user-files/upload-file/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            return response.data;
+        } catch (err) {
+            console.error('Błąd przesyłania pliku:', err);
+            throw err;
+        }
+    };
+
+    // Obsługa wyboru pliku
+    const handleFileChange = async (fieldName, files) => {
+        if (!files || files.length === 0) {
+            return;
+        }
+
+        setUploadingFiles(prev => ({ ...prev, [fieldName]: true }));
+
+        try {
+            const uploadPromises = Array.from(files).map(file => uploadFile(file));
+            const uploadedFiles = await Promise.all(uploadPromises);
+            
+            // Format zgodny z API Baserow
+            const newFileData = uploadedFiles.map(file => ({
+                name: file.name,
+                visible_name: file.visible_name,
+                url: file.url,
+                thumbnails: file.thumbnails
+            }));
+            
+            // Dodaj nowe pliki do istniejących
+            const currentFiles = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+            const updatedFiles = [...currentFiles, ...newFileData];
+            
+            handleFormChange(fieldName, updatedFiles);
+        } catch (err) {
+            setError(`Błąd przesyłania plików: ${err.message}`);
+        } finally {
+            setUploadingFiles(prev => ({ ...prev, [fieldName]: false }));
+        }
+    };
+
     // Filtrowanie opcji multiple_select na podstawie wyszukiwania
     const getFilteredSelectOptions = (fieldName, options) => {
         const searchTerm = selectSearchTerms[fieldName] || '';
@@ -329,8 +380,18 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                 return;
             }
             
+            // Dla pól plików - zachowaj pełną strukturę
+            if (column && column.type === 'file' && Array.isArray(value)) {
+                // Dla pól plików - wyślij pełną strukturę z name, visible_name, url, thumbnails
+                cleaned[fieldName] = value.map(file => ({
+                    name: file.name,
+                    visible_name: file.visible_name,
+                    url: file.url,
+                    thumbnails: file.thumbnails
+                }));
+            }
             // Dla pól select (single_select, multiple_select, link_row)
-            if (Array.isArray(value)) {
+            else if (Array.isArray(value)) {
                 // Tablica - zostaw tylko ID
                 const ids = value.map(item => {
                     if (typeof item === 'object' && item !== null && item.id) {
@@ -799,12 +860,89 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             
                                             {/* File fields */}
                                             {fieldType.includes('file') && (
+                                                <div>
+                                                    {/* Wyświetlanie wybranych plików */}
+                                                    {fieldValue && Array.isArray(fieldValue) && fieldValue.length > 0 && (
+                                                        <div className="mb-3">
+                                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                                <label className="form-label mb-0">Wybrane pliki ({fieldValue.length}):</label>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-sm btn-outline-danger"
+                                                                    onClick={() => handleFormChange(fieldName, [])}
+                                                                >
+                                                                    Usuń wszystkie
+                                                                </button>
+                                                            </div>
+                                                            <div className="d-flex flex-wrap gap-2">
+                                                                {fieldValue.map((file, index) => (
+                                                                    <div key={index} className="d-flex align-items-center gap-2 border rounded p-2">
+                                                                        {file.thumbnails?.small?.url ? (
+                                                                            <img
+                                                                                src={file.thumbnails.small.url}
+                                                                                alt={file.name}
+                                                                                style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }}
+                                                                            />
+                                                                        ) : (
+                                                                            <div 
+                                                                                className="d-flex align-items-center justify-content-center bg-light"
+                                                                                style={{ width: 32, height: 32, borderRadius: 4 }}
+                                                                            >
+                                                                                📄
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="flex-grow-1">
+                                                                            <div className="fw-bold" style={{ fontSize: '0.875rem' }}>
+                                                                                {file.visible_name || file.name}
+                                                                            </div>
+                                                                            {file.url && (
+                                                                                <a 
+                                                                                    href={file.url} 
+                                                                                    target="_blank" 
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="text-decoration-none"
+                                                                                    style={{ fontSize: '0.75rem' }}
+                                                                                >
+                                                                                    Pobierz
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-sm btn-outline-danger"
+                                                                            onClick={() => {
+                                                                                const newFiles = fieldValue.filter((_, i) => i !== index);
+                                                                                handleFormChange(fieldName, newFiles);
+                                                                            }}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Pole wyboru plików */}
                                                 <input
                                                     type="file"
                                                     className="form-control"
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.files[0])}
+                                                        multiple
+                                                        onChange={(e) => handleFileChange(fieldName, e.target.files)}
                                                     required={column.primary}
-                                                />
+                                                        disabled={uploadingFiles[fieldName]}
+                                                    />
+                                                    
+                                                    {/* Wskaźnik ładowania */}
+                                                    {uploadingFiles[fieldName] && (
+                                                        <div className="mt-2 d-flex align-items-center">
+                                                            <div className="spinner-border spinner-border-sm me-2" role="status">
+                                                                <span className="visually-hidden">Przesyłanie...</span>
+                                                            </div>
+                                                            <span>Przesyłanie plików...</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                             
                                             {/* Long text fields */}

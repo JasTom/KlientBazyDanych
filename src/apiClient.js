@@ -16,5 +16,6 @@ apiClient.interceptors.request.use((config) => {
 });
 
 export default apiClient;
+export { AUTH_TOKEN };
 
 
