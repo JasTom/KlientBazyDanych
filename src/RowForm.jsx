@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import apiClient from './apiClient';
+import { Form, Dropdown, ButtonGroup, Button } from 'react-bootstrap';
 
 const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     const [formData, setFormData] = useState(editingRow ? { ...editingRow } : {});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [linkRowData, setLinkRowData] = useState({}); // { [fieldName]: { rows: [], columns: [], loading: false } }
+    const [openDropdowns, setOpenDropdowns] = useState({}); // { [fieldName]: boolean }
+    const [searchTerms, setSearchTerms] = useState({}); // { [fieldName]: string }
+    const [selectSearchTerms, setSelectSearchTerms] = useState({}); // { [fieldName]: string } dla multiple_select
 
     const formatCellValue = (rawValue) => {
         if (rawValue === null || rawValue === undefined) return "";
@@ -60,6 +65,212 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
 
     const handleFormChange = (fieldName, value) => {
         setFormData(prev => ({ ...prev, [fieldName]: value }));
+    };
+
+    // Pobierz dane z powiązanej tabeli dla pola link_row
+    const fetchLinkRowData = async (column) => {
+        if (!column.link_row_table_id) return;
+        
+        const fieldName = column.name;
+        setLinkRowData(prev => ({
+            ...prev,
+            [fieldName]: { ...prev[fieldName], loading: true }
+        }));
+
+        try {
+            // Pobierz kolumny powiązanej tabeli
+            const columnsResponse = await apiClient.get(`/database/fields/table/${column.link_row_table_id}/`);
+            const linkedColumns = columnsResponse.data || [];
+            
+            // Znajdź pole primary
+            const primaryColumn = linkedColumns.find(col => col.primary);
+            const primaryFieldName = primaryColumn ? primaryColumn.name : 'id';
+
+            let allRows = [];
+            let page = 1;
+            const pageSize = 200; // Maksymalny rozmiar strony w API Baserow
+            let hasMore = true;
+
+            while (hasMore) {
+                const response = await apiClient.get(`/database/rows/table/${column.link_row_table_id}/?user_field_names=true&page=${page}&size=${pageSize}`);
+                const rows = response.data.results || [];
+                allRows = [...allRows, ...rows];
+                
+                // Sprawdź czy są więcej danych
+                hasMore = rows.length === pageSize;
+                page++;
+            }
+
+            setLinkRowData(prev => ({
+                ...prev,
+                [fieldName]: { 
+                    rows: allRows, 
+                    columns: linkedColumns,
+                    primaryFieldName: primaryFieldName,
+                    loading: false 
+                }
+            }));
+        } catch (err) {
+            console.error(`Błąd pobierania danych dla pola ${fieldName}:`, err);
+            setLinkRowData(prev => ({
+                ...prev,
+                [fieldName]: { 
+                    rows: [], 
+                    columns: [],
+                    primaryFieldName: 'id',
+                    loading: false 
+                }
+            }));
+        }
+    };
+
+    // Pobierz dane dla wszystkich pól link_row przy inicjalizacji
+    React.useEffect(() => {
+        columns.forEach(column => {
+            if (column.type === 'link_row' && column.link_row_table_id) {
+                fetchLinkRowData(column);
+            }
+        });
+    }, [columns]);
+
+    // Zamykanie dropdown po kliknięciu poza nim
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.link-row-dropdown') && !event.target.closest('.multiple-select-dropdown')) {
+                setOpenDropdowns({});
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const getLinkRowValue = (fieldValue, fieldType) => {
+        if (fieldType === 'link_row') {
+            if (Array.isArray(fieldValue)) {
+                return fieldValue.map(item => {
+                    if (typeof item === 'object' && item.id) {
+                        return item.id;
+                    }
+                    return item;
+                });
+            }
+            return fieldValue || [];
+        }
+        return fieldValue;
+    };
+
+    const handleLinkRowChange = (fieldName, fieldType, selectedValue, column) => {
+        if (fieldType === 'link_row') {
+            const selectedIds = Array.from(selectedValue).map(optionValue => parseInt(optionValue));
+            handleFormChange(fieldName, selectedIds);
+        }
+    };
+
+    // Obsługa multiselect dla link_row
+    const toggleDropdown = (fieldName) => {
+        setOpenDropdowns(prev => ({
+            ...prev,
+            [fieldName]: !prev[fieldName]
+        }));
+    };
+
+    const toggleRowSelection = (fieldName, rowId) => {
+        const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+        const isSelected = currentValues.includes(rowId);
+        
+        let newValues;
+        if (isSelected) {
+            newValues = currentValues.filter(id => id !== rowId);
+        } else {
+            newValues = [...currentValues, rowId];
+        }
+        
+        handleFormChange(fieldName, newValues);
+    };
+
+    const getSelectedRowsText = (fieldName, rows) => {
+        const selectedIds = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+        const selectedRows = rows.filter(row => selectedIds.includes(row.id));
+        const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+        
+        if (selectedRows.length === 0) {
+            return 'Wybierz opcje...';
+        } else if (selectedRows.length === 1) {
+            return selectedRows[0][primaryFieldName] || `ID: ${selectedRows[0].id}`;
+        } else {
+            return `Wybrano ${selectedRows.length} opcji`;
+        }
+    };
+
+    // Filtrowanie wierszy na podstawie wyszukiwania
+    const getFilteredRows = (fieldName, rows) => {
+        const searchTerm = searchTerms[fieldName] || '';
+        if (!searchTerm.trim()) return rows;
+        
+        const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+        return rows.filter(row => {
+            const displayText = (row[primaryFieldName] || `ID: ${row.id}`).toString().toLowerCase();
+            return displayText.includes(searchTerm.toLowerCase());
+        });
+    };
+
+    // Usuwanie wybranej pozycji
+    const removeSelectedRow = (fieldName, rowId) => {
+        const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+        const newValues = currentValues.filter(id => id !== rowId);
+        handleFormChange(fieldName, newValues);
+    };
+
+    // Obsługa wyszukiwania
+    const handleSearchChange = (fieldName, value) => {
+        setSearchTerms(prev => ({
+            ...prev,
+            [fieldName]: value
+        }));
+    };
+
+    // Obsługa wyszukiwania dla multiple_select
+    const handleSelectSearchChange = (fieldName, value) => {
+        setSelectSearchTerms(prev => ({
+            ...prev,
+            [fieldName]: value
+        }));
+    };
+
+    // Filtrowanie opcji multiple_select na podstawie wyszukiwania
+    const getFilteredSelectOptions = (fieldName, options) => {
+        const searchTerm = selectSearchTerms[fieldName] || '';
+        if (!searchTerm.trim()) return options;
+        
+        return options.filter(option => {
+            const displayText = option.value.toString().toLowerCase();
+            return displayText.includes(searchTerm.toLowerCase());
+        });
+    };
+
+    // Usuwanie wybranej opcji multiple_select
+    const removeSelectedOption = (fieldName, optionId) => {
+        const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+        const newValues = currentValues.filter(id => id !== optionId);
+        handleFormChange(fieldName, newValues);
+    };
+
+    // Toggle opcji multiple_select
+    const toggleOptionSelection = (fieldName, optionId) => {
+        const currentValues = Array.isArray(formData[fieldName]) ? formData[fieldName] : [];
+        const isSelected = currentValues.includes(optionId);
+        
+        let newValues;
+        if (isSelected) {
+            newValues = currentValues.filter(id => id !== optionId);
+        } else {
+            newValues = [...currentValues, optionId];
+        }
+        
+        handleFormChange(fieldName, newValues);
     };
 
     const handleFormSubmit = async (e) => {
@@ -174,53 +385,264 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             
                                             {/* Multiple Select fields */}
                                             {fieldType === 'multiple_select' && (
-                                                <div className="border rounded p-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                                    {column.select_options && column.select_options.map(option => {
-                                                        const isSelected = Array.isArray(fieldValue) && 
-                                                            fieldValue.some(item => 
-                                                                (typeof item === 'object' && item.id === option.id) || 
-                                                                item === option.id
-                                                            );
-                                                        return (
-                                                            <div key={option.id} className="form-check">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    id={`${fieldName}_${option.id}`}
-                                                                    checked={isSelected}
-                                                                    onChange={(e) => {
-                                                                        const currentValues = Array.isArray(fieldValue) ? fieldValue : [];
-                                                                        let newValues;
+                                                <div>
+                                                    <div className="position-relative multiple-select-dropdown">
+                                                        {/* Wyświetlanie wybranych opcji jako tagi */}
+                                                        <div 
+                                                            className="border rounded p-2 d-flex flex-wrap align-items-center gap-1" 
+                                                            style={{ 
+                                                                minHeight: '38px',
+                                                                cursor: 'pointer',
+                                                                backgroundColor: openDropdowns[fieldName] ? '#f8f9fa' : 'white'
+                                                            }}
+                                                            onClick={() => toggleDropdown(fieldName)}
+                                                        >
+                                                            {(() => {
+                                                                const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
+                                                                const selectedOptions = (column.select_options || []).filter(option => selectedIds.includes(option.id));
+                                                                
+                                                                if (selectedOptions.length === 0) {
+                                                                    return (
+                                                                        <span className="text-muted">
+                                                                            Wybierz opcje...
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                
+                                                                return selectedOptions.map(option => (
+                                                                    <span
+                                                                        key={option.id}
+                                                                        className="badge d-flex align-items-center gap-1"
+                                                                        style={{ 
+                                                                            fontSize: '0.75rem',
+                                                                            backgroundColor: option.color === 'light-gray' ? '#6c757d' : 
+                                                                                           option.color === 'light-pink' ? '#e83e8c' : 
+                                                                                           option.color === 'brown' ? '#8b4513' : 
+                                                                                           option.color === 'darker-cyan' ? '#20c997' : 
+                                                                                           option.color === 'light-green' ? '#28a745' : '#0d6efd'
+                                                                        }}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            removeSelectedOption(fieldName, option.id);
+                                                                        }}
+                                                                    >
+                                                                        {option.value}
+                                                                        <span style={{ cursor: 'pointer' }}>×</span>
+                                                                    </span>
+                                                                ));
+                                                            })()}
+                                                            
+                                                            <span className="ms-auto text-muted">
+                                                                {openDropdowns[fieldName] ? '▲' : '▼'}
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        {/* Dropdown z wyszukiwarką */}
+                                                        {openDropdowns[fieldName] && (
+                                                            <div 
+                                                                className="border rounded mt-1 position-absolute w-100 bg-white" 
+                                                                style={{ 
+                                                                    zIndex: 1000,
+                                                                    maxHeight: '250px',
+                                                                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                                                                }}
+                                                            >
+                                                                {/* Pole wyszukiwania */}
+                                                                <div className="p-2 border-bottom">
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control form-control-sm"
+                                                                        placeholder="Szukaj..."
+                                                                        value={selectSearchTerms[fieldName] || ''}
+                                                                        onChange={(e) => handleSelectSearchChange(fieldName, e.target.value)}
+                                                                        autoFocus
+                                                                    />
+                                                                </div>
+                                                                
+                                                                {/* Lista opcji */}
+                                                                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                                    {(() => {
+                                                                        const allOptions = column.select_options || [];
+                                                                        const filteredOptions = getFilteredSelectOptions(fieldName, allOptions);
                                                                         
-                                                                        if (e.target.checked) {
-                                                                            // Dodaj ID opcji
-                                                                            newValues = [...currentValues, option.id];
-                                                                        } else {
-                                                                            // Usuń ID opcji
-                                                                            newValues = currentValues.filter(item => 
-                                                                                (typeof item === 'object' && item.id !== option.id) || 
-                                                                                item !== option.id
+                                                                        if (filteredOptions.length === 0) {
+                                                                            return (
+                                                                                <div className="p-2 text-muted text-center">
+                                                                                    {selectSearchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych opcji'}
+                                                                                </div>
                                                                             );
                                                                         }
-                                                                        handleFormChange(fieldName, newValues);
-                                                                    }}
-                                                                />
-                                                                <label 
-                                                                    className="form-check-label" 
-                                                                    htmlFor={`${fieldName}_${option.id}`}
+                                                                        
+                                                                        return filteredOptions.map(option => {
+                                                                            const isSelected = Array.isArray(fieldValue) && fieldValue.includes(option.id);
+                                                                            
+                                                                            return (
+                                                                                <div
+                                                                                    key={option.id}
+                                                                                    className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
+                                                                                    style={{ cursor: 'pointer' }}
+                                                                                    onClick={() => toggleOptionSelection(fieldName, option.id)}
+                                                                                >
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        className="form-check-input me-2"
+                                                                                        checked={isSelected}
+                                                                                        onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                        readOnly
+                                                                                    />
+                                                                                    <span 
+                                                                                        className="text-truncate"
+                                                                                        style={{ 
+                                                                                            color: option.color === 'light-gray' ? '#6c757d' : 
+                                                                                                   option.color === 'light-pink' ? '#e83e8c' : 
+                                                                                                   option.color === 'brown' ? '#8b4513' : 
+                                                                                                   option.color === 'darker-cyan' ? '#20c997' : 
+                                                                                                   option.color === 'light-green' ? '#28a745' : 'inherit'
+                                                                                        }}
+                                                                                    >
+                                                                                        {option.value}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        });
+                                                                    })()}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {column.primary && (
+                                                        <input 
+                                                            type="hidden" 
+                                                            value={Array.isArray(fieldValue) && fieldValue.length > 0 ? 'selected' : ''} 
+                                                            required 
+                                                        />
+                                                    )}
+                                                </div>
+                                            )}
+                                            
+                                            {/* Link Row fields */}
+                                            {fieldType === 'link_row' && (
+                                                <div>
+                                                    {linkRowData[fieldName]?.loading ? (
+                                                        <div className="text-center text-muted p-3">
+                                                            <div className="spinner-border spinner-border-sm me-2" role="status">
+                                                                <span className="visually-hidden">Ładowanie...</span>
+                                                            </div>
+                                                            Ładowanie danych...
+                                                        </div>
+                                                    ) : (
+                                                        <div className="position-relative link-row-dropdown">
+                                                            {/* Wyświetlanie wybranych pozycji jako tagi */}
+                                                            <div 
+                                                                className="border rounded p-2 d-flex flex-wrap align-items-center gap-1" 
+                                                                style={{ 
+                                                                    minHeight: '38px',
+                                                                    cursor: 'pointer',
+                                                                    backgroundColor: openDropdowns[fieldName] ? '#f8f9fa' : 'white'
+                                                                }}
+                                                                onClick={() => toggleDropdown(fieldName)}
+                                                            >
+                                                                {(() => {
+                                                                    const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
+                                                                    const selectedRows = (linkRowData[fieldName]?.rows || []).filter(row => selectedIds.includes(row.id));
+                                                                    const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+                                                                    
+                                                                    if (selectedRows.length === 0) {
+                                                                        return (
+                                                                            <span className="text-muted">
+                                                                                Wybierz opcje...
+                                                                            </span>
+                                                                        );
+                                                                    }
+                                                                    
+                                                                    return selectedRows.map(row => (
+                                                                        <span
+                                                                            key={row.id}
+                                                                            className="badge bg-primary d-flex align-items-center gap-1"
+                                                                            style={{ fontSize: '0.75rem' }}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                removeSelectedRow(fieldName, row.id);
+                                                                            }}
+                                                                        >
+                                                                            {row[primaryFieldName] || `ID: ${row.id}`}
+                                                                            <span style={{ cursor: 'pointer' }}>×</span>
+                                                                        </span>
+                                                                    ));
+                                                                })()}
+                                                                
+                                                                <span className="ms-auto text-muted">
+                                                                    {openDropdowns[fieldName] ? '▲' : '▼'}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            {/* Dropdown z wyszukiwarką */}
+                                                            {openDropdowns[fieldName] && (
+                                                                <div 
+                                                                    className="border rounded mt-1 position-absolute w-100 bg-white" 
                                                                     style={{ 
-                                                                        color: option.color === 'light-gray' ? '#6c757d' : 
-                                                                               option.color === 'light-pink' ? '#e83e8c' : 
-                                                                               option.color === 'brown' ? '#8b4513' : 
-                                                                               option.color === 'darker-cyan' ? '#20c997' : 
-                                                                               option.color === 'light-green' ? '#28a745' : 'inherit'
+                                                                        zIndex: 1000,
+                                                                        maxHeight: '250px',
+                                                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                                                                     }}
                                                                 >
-                                                                    {option.value}
-                                                                </label>
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                    {/* Pole wyszukiwania */}
+                                                                    <div className="p-2 border-bottom">
+                                                                        <input
+                                                                            type="text"
+                                                                            className="form-control form-control-sm"
+                                                                            placeholder="Szukaj..."
+                                                                            value={searchTerms[fieldName] || ''}
+                                                                            onChange={(e) => handleSearchChange(fieldName, e.target.value)}
+                                                                            autoFocus
+                                                                        />
+                                                                    </div>
+                                                                    
+                                                                    {/* Lista opcji */}
+                                                                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                                        {(() => {
+                                                                            const allRows = linkRowData[fieldName]?.rows || [];
+                                                                            const filteredRows = getFilteredRows(fieldName, allRows);
+                                                                            const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+                                                                            
+                                                                            if (filteredRows.length === 0) {
+                                                                                return (
+                                                                                    <div className="p-2 text-muted text-center">
+                                                                                        {searchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych wierszy'}
+                                                                                    </div>
+                                                                                );
+                                                                            }
+                                                                            
+                                                                            return filteredRows.map(row => {
+                                                                                const isSelected = Array.isArray(fieldValue) && fieldValue.includes(row.id);
+                                                                                const displayText = row[primaryFieldName] || `ID: ${row.id}`;
+                                                                                
+                                                                                return (
+                                                                                    <div
+                                                                                        key={row.id}
+                                                                                        className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
+                                                                                        style={{ cursor: 'pointer' }}
+                                                                                        onClick={() => toggleRowSelection(fieldName, row.id)}
+                                                                                    >
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            className="form-check-input me-2"
+                                                                                            checked={isSelected}
+                                                                                            onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                            readOnly
+                                                                                        />
+                                                                                        <span className="text-truncate">{displayText}</span>
+                                                                                    </div>
+                                                                                );
+                                                                            });
+                                                                        })()}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    
                                                     {column.primary && (
                                                         <input 
                                                             type="hidden" 
