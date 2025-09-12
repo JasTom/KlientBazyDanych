@@ -228,7 +228,26 @@ const TableBaserow = ({ tableId, tableName }) => {
         if (type.includes('date') || type.includes('created') || type.includes('modified')) {
             try {
                 const date = new Date(String(raw));
-                if (!isNaN(date.getTime())) return <span>{date.toLocaleString()}</span>;
+                if (!isNaN(date.getTime())) {
+                    const includeTime = column.date_include_time;
+                    const dateFormat = column.date_format || 'ISO';
+                    
+                    if (includeTime) {
+                        // Z czasem - formatuj zgodnie z date_time_format
+                        const timeFormat = column.date_time_format === '12' ? 'en-US' : 'pl-PL';
+                        return <span>{date.toLocaleString(timeFormat)}</span>;
+                    } else {
+                        // Tylko data - formatuj zgodnie z date_format
+                        if (dateFormat === 'US') {
+                            return <span>{date.toLocaleDateString('en-US')}</span>;
+                        } else if (dateFormat === 'EU') {
+                            return <span>{date.toLocaleDateString('pl-PL')}</span>;
+                        } else {
+                            // ISO lub domyślny
+                            return <span>{date.toLocaleDateString('pl-PL')}</span>;
+                        }
+                    }
+                }
             } catch (_) { /* ignore */ }
         }
         // Single select
