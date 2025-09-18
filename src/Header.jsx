@@ -32,19 +32,7 @@ function Header() {
     return (
 
         <Navbar bg="dark" variant="dark" expand="lg">
-            <Container>
-                <Navbar.Brand href="/">Moje Tabele</Navbar.Brand>
-                <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="me-auto">
-                        {tables.map((table) => (
-                            <Nav.Link key={table.id} href={`/${table.id}`}>
-                                {table.name}
-                            </Nav.Link>
-                        ))}
-                    </Nav>
-                </Navbar.Collapse>
-            </Container>
+
         </Navbar>
     );
 }

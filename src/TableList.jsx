@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from "./apiClient";
 import TableTile from "./TableTile";
+import { fetchUserPermissionsByTable, hasAnyViewPermission } from "./permissionsApi";
 
 function TableList() {
 
@@ -15,8 +16,19 @@ function TableList() {
     useEffect(() => {
         const fetchTables = async () => {
             try {
-                const response = await apiClient.get("/database/tables/all-tables/");
-                setTables(response.data);
+                // Równolegle: listy tabel i uprawnienia użytkownika
+                const [tablesResp, permsMap] = await Promise.all([
+                    apiClient.get("/database/tables/all-tables/"),
+                    fetchUserPermissionsByTable()
+                ]);
+
+                const allTables = tablesResp.data || [];
+                // Filtr: pokazuj tylko te tabele, dla których użytkownik ma co najmniej Podgląd
+                const allowed = allTables.filter(t => {
+                    const set = permsMap.get(Number(t.id)) || permsMap.get(Number(t.table_id));
+                    return hasAnyViewPermission(set);
+                });
+                setTables(allowed);
             } catch (err) {
                 setError(err.message);
             } finally {
