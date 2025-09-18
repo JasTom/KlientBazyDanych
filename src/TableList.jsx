@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import apiClient from "./apiClient";
 import TableTile from "./TableTile";
 
 function TableList() {
 
+    const navigate = useNavigate();
     const [tables, setTables] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [query, setQuery] = useState("");
+    const [viewMode, setViewMode] = useState("grid"); // grid | list
 
     useEffect(() => {
         const fetchTables = async () => {
@@ -27,23 +31,107 @@ function TableList() {
 
 
 
+    // Filtrowanie tabel po nazwie
+    const filteredTables = tables.filter(t => (t?.name || "").toLowerCase().includes(query.toLowerCase()));
+
+    // Grupowanie po bazie
+    const grouped = Object.entries(
+        filteredTables.reduce((acc, table) => {
+            const key = table.database_id || "unknown";
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(table);
+            return acc;
+        }, {})
+    );
+
+    // Prosta paleta i emoji per baza (deterministycznie po ID)
+    const palette = [
+        { bg: "text-bg-primary", emoji: "📘" },
+        { bg: "text-bg-success", emoji: "📗" },
+        { bg: "text-bg-warning", emoji: "📒" },
+        { bg: "text-bg-info", emoji: "📙" },
+        { bg: "text-bg-secondary", emoji: "📕" },
+        { bg: "text-bg-danger", emoji: "📓" }
+    ];
+    const getDbMeta = (dbId) => {
+        const idx = Math.abs(String(dbId).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % palette.length;
+        return palette[idx];
+    };
+
     return (
-        <div>
-            <h1>Lista tabel w bazie danych</h1>
-            {Object.entries(
-                tables.reduce((acc, table) => {
-                    if (!acc[table.database_id]) {
-                        acc[table.database_id] = [];
-                    }
-                    acc[table.database_id].push(table);
-                    return acc;
-                }, {})
-            ).map(([databaseId, tablesForDb]) => (
-                <div key={databaseId} className="TableTileContainer ">
-                    {tablesForDb.map(table => (
-                        <TableTile name={table.name} key={table.id} id={table.id} />
-                    ))}
+        <div className="container py-3">
+            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                <h1 className="h4 m-0">Lista tabel</h1>
+                <div className="d-flex w-100 w-md-auto gap-2">
+                    <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Szukaj tabeli..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        style={{ maxWidth: 360 }}
+                    />
+                    <div className="btn-group" role="group" aria-label="Widok">
+                        <button
+                            type="button"
+                            className={`btn btn-sm ${viewMode === "grid" ? "btn-primary" : "btn-outline-primary"}`}
+                            onClick={() => setViewMode("grid")}
+                            title="Widok siatki"
+                        >
+                            ▦
+                        </button>
+                        <button
+                            type="button"
+                            className={`btn btn-sm ${viewMode === "list" ? "btn-primary" : "btn-outline-primary"}`}
+                            onClick={() => setViewMode("list")}
+                            title="Widok listy"
+                        >
+                            ≣
+                        </button>
+                    </div>
                 </div>
+            </div>
+
+            {grouped.length === 0 && (
+                <div className="text-muted">Brak wyników.</div>
+            )}
+
+            {grouped.map(([databaseId, tablesForDb]) => (
+                <section key={databaseId} className="mb-4">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                        <div className="d-flex align-items-center gap-2">
+                            <span className={`badge ${getDbMeta(databaseId).bg}`} style={{ fontSize: ".9rem" }}>
+                                {getDbMeta(databaseId).emoji}
+                            </span>
+                            <h2 className="h6 m-0">Baza:</h2>
+                        </div>
+                        <span className="badge text-bg-light">{tablesForDb.length}</span>
+                    </div>
+                    {viewMode === "grid" ? (
+                        <div className="row g-3">
+                            {tablesForDb.map(table => (
+                                <div key={table.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+                                    <TableTile name={table.name} id={table.id} />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="list-group">
+                            {tablesForDb.map(table => (
+                                <button
+                                    key={table.id}
+                                    type="button"
+                                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                                    onClick={() => navigate(`/tabela-baserow/${table.id}/${table.name}`)}
+                                    title={table.name}
+                                >
+                                    <span className="text-truncate" style={{ maxWidth: "80%" }}>{table.name}</span>
+                                    <span className="badge text-bg-secondary">ID {table.id}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </section>
             ))}
         </div>
     );
