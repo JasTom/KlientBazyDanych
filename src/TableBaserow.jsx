@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from './apiClient';
 import RowForm from './RowForm';
+import { fetchUserPermissionsByTable, hasAnyViewPermission } from './permissionsApi';
 
 const TableBaserow = ({ tableId, tableName }) => {
     const [columns, setColumns] = useState([]);
@@ -32,6 +33,11 @@ const TableBaserow = ({ tableId, tableName }) => {
     const topScrollRef = React.useRef(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [permLoading, setPermLoading] = useState(true);
+    const [canView, setCanView] = useState(true);
+    const [canCreate, setCanCreate] = useState(true);
+    const [canUpdate, setCanUpdate] = useState(true);
+    const [canDelete, setCanDelete] = useState(true);
 
     // Domyślna miniatura (SVG) gdy brak miniaturek w odpowiedzi API
     const defaultThumb = 'data:image/svg+xml;utf8,\
@@ -358,8 +364,43 @@ const TableBaserow = ({ tableId, tableName }) => {
         return () => clearTimeout(id);
     }, [search]);
 
-    if (loading) return <div>Ładowanie...</div>;
+    // Uprawnienia dla bieżącej tabeli
+    useEffect(() => {
+        let mounted = true;
+        const loadPerms = async () => {
+            try {
+                setPermLoading(true);
+                const map = await fetchUserPermissionsByTable();
+                const tidNum = Number(tableId);
+                const set = map.get(tidNum);
+
+                const view = hasAnyViewPermission(set);
+                const create = Boolean(set?.has('Dodawanie'));
+                const update = Boolean(set?.has('Edycja'));
+                const del = Boolean(set?.has('Usuwanie'));
+
+                if (!mounted) return;
+                setCanView(view);
+                setCanCreate(create);
+                setCanUpdate(update);
+                setCanDelete(del);
+            } catch (_) {
+                if (!mounted) return;
+                setCanView(false);
+                setCanCreate(false);
+                setCanUpdate(false);
+                setCanDelete(false);
+            } finally {
+                if (mounted) setPermLoading(false);
+            }
+        };
+        loadPerms();
+        return () => { mounted = false; };
+    }, [tableId]);
+
+    if (loading || permLoading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
+    if (!canView) return <div className="alert alert-warning m-3">Brak uprawnień do podglądu tej tabeli.</div>;
     // Funkcje formularza
     const openAddForm = () => {
         setEditingRow(null);
@@ -409,9 +450,11 @@ const TableBaserow = ({ tableId, tableName }) => {
                         onChange={(e) => { setPage(1); setSearch(e.target.value); }}
                         placeholder="Szukaj..."
                     />
-                    <button className="btn btn-success btn-sm" onClick={openAddForm}>
-                        + Dodaj wiersz
-                    </button>
+                    {canCreate && (
+                        <button className="btn btn-success btn-sm" onClick={openAddForm}>
+                            + Dodaj wiersz
+                        </button>
+                    )}
                     {(() => {
                         const hasSortOrFilter = Boolean(orderField) || filtersList.length > 0 || Boolean(search.trim());
                         return (
@@ -577,12 +620,16 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 ))}
                                 <td style={{ width: 120, textAlign: 'center' }}>
                                     <div className="btn-group btn-group-sm">
-                                        <button className="btn btn-outline-primary" onClick={() => openEditForm(row)} title="Edytuj">
-                                            ✏️
-                                        </button>
-                                        <button className="btn btn-outline-danger" onClick={() => deleteRow(row.id)} title="Usuń">
-                                            🗑️
-                                        </button>
+                                        {canUpdate && (
+                                            <button className="btn btn-outline-primary" onClick={() => openEditForm(row)} title="Edytuj">
+                                                ✏️
+                                            </button>
+                                        )}
+                                        {canDelete && (
+                                            <button className="btn btn-outline-danger" onClick={() => deleteRow(row.id)} title="Usuń">
+                                                🗑️
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
