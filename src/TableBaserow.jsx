@@ -609,8 +609,8 @@ const TableBaserow = ({ tableId, tableName }) => {
                 <div style={{ width: scrollContentWidth || '100%', height: 1 }} />
             </div>
             {/* Sticky header synced horizontally */}
-            <div ref={headerScrollRef} className="table-responsive" style={{ overflowX: 'hidden', overflowY: 'hidden', marginBottom: 0 }}>
-                <table ref={headerTableRef} className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <div ref={headerScrollRef} className="table-responsive" style={{ overflowX: 'hidden', overflowY: 'hidden', marginBottom: 0, padding: 0, scrollbarGutter: 'stable both-edges' }}>
+                <table ref={headerTableRef} className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
                     <thead className="table-dark text-center">
                         <tr>
                             {columns.map(column => (
@@ -637,8 +637,8 @@ const TableBaserow = ({ tableId, tableName }) => {
                 </table>
             </div>
 
-            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable both-edges', marginTop: 0 }}>
-                <table className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable both-edges', marginTop: 0, padding: 0 }}>
+                <table className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
                     <tbody>
                         {rows.map(row => (
                             <tr
