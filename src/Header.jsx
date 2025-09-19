@@ -16,6 +16,7 @@ function Header() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dbNames, setDbNames] = useState({}); // { [database_id]: name }
+    const [tablesFilter, setTablesFilter] = useState('');
 
     useEffect(() => {
         const fetchTables = async () => {
@@ -75,31 +76,65 @@ function Header() {
 
     return (
 
-        <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm">
-            <Container>
+        <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm w-100">
+            <Container fluid className="px-3">
                 <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
-                    <img src={zdrochem_logo} alt="logo" width={28} height={28} style={{ objectFit: 'cover', borderRadius: 4 }} />
-                    <span>Moje Tabele</span>
+                    <img
+                        src={zdrochem_logo}
+                        alt="logo"
+                        className="d-inline-block align-top"
+                        style={{ height: 32, width: 'auto', objectFit: 'contain', borderRadius: '5%' }}
+                    />
+                    <span>🏠 Moje Tabele</span>
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="main-nav" />
                 <Navbar.Collapse id="main-nav">
                     <Nav className="me-auto" variant="tabs">
-                        {Object.entries(
-                            tables.reduce((acc, t) => {
-                                const dbId = t.database_id || 'unknown';
-                                if (!acc[dbId]) acc[dbId] = [];
-                                acc[dbId].push(t);
-                                return acc;
-                            }, {})
-                        ).map(([dbId, group]) => (
-                            <NavDropdown key={dbId} title={(dbNames[dbId] || `Baza ${dbId}`)} id={`db-${dbId}`}>
-                                {group.map((t) => (
-                                    <NavDropdown.Item key={t.id} as={Link} to={`/tabela-baserow/${t.id}/${encodeURIComponent(t.name)}`}>
-                                        {t.name}
-                                    </NavDropdown.Item>
-                                ))}
-                            </NavDropdown>
-                        ))}
+                        {/* Zbiorcza lista wszystkich baz i tabel */}
+                        <NavDropdown title="Lista tabel" id="all-dbs-and-tables">
+                            {/* Pole wyszukiwania */}
+                            <div className="p-2 border-bottom bg-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                                <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Szukaj bazy lub tabeli..."
+                                    value={tablesFilter}
+                                    onChange={(e) => setTablesFilter(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ maxHeight: '60vh', overflowY: 'auto', minWidth: 280 }}>
+                                {Object.entries(
+                                    tables.reduce((acc, t) => {
+                                        const dbId = t.database_id || 'unknown';
+                                        if (!acc[dbId]) acc[dbId] = [];
+                                        acc[dbId].push(t);
+                                        return acc;
+                                    }, {})
+                                ).map(([dbId, group], idx, arr) => {
+                                    const q = tablesFilter.trim().toLowerCase();
+                                    const dbName = (dbNames[dbId] || `Baza ${dbId}`).toLowerCase();
+                                    const filteredGroup = q
+                                        ? group.filter((t) => String(t.name || '').toLowerCase().includes(q))
+                                        : group;
+                                    const showDb = q ? (dbName.includes(q) || filteredGroup.length > 0) : true;
+                                    if (!showDb) return null;
+                                    return (
+                                        <div key={`all-${dbId}`}>
+                                            <NavDropdown.Header>
+                                                {dbNames[dbId] || `Baza ${dbId}`}
+                                            </NavDropdown.Header>
+                                            {(filteredGroup.length > 0 ? filteredGroup : group).map((t) => (
+                                                <NavDropdown.Item key={`all-${dbId}-${t.id}`} as={Link} to={`/tabela-baserow/${t.id}/${encodeURIComponent(t.name)}`}>
+                                                    {t.name}
+                                                </NavDropdown.Item>
+                                            ))}
+                                            {idx < arr.length - 1 && <NavDropdown.Divider />}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </NavDropdown>
                     </Nav>
                 </Navbar.Collapse>
             </Container>
