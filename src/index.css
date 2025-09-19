@@ -25,9 +25,9 @@ body {
   background-color: #faf6f6b6; 
 }
 
-/* Wyłącz przewijanie całej strony, przewijane będą tylko wewnętrzne obszary */
+/* Włącz przewijanie całej strony, a dla tabel zachowaj własny scroll */
 html, body {
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* Przyklejone nagłówki tabeli wewnątrz scrollowalnego kontenera */
