@@ -104,7 +104,7 @@ function TableList() {
     };
 
     return (
-        <div className="container py-3">
+        <div className="container py-3" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
             <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
                 <h1 className="h4 m-0">Lista tabel</h1>
                 <div className="d-flex w-100 w-md-auto gap-2">

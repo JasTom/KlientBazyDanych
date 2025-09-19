@@ -31,6 +31,8 @@ const TableBaserow = ({ tableId, tableName }) => {
     const [scrollContentWidth, setScrollContentWidth] = useState(0);
     const tableScrollRef = React.useRef(null);
     const topScrollRef = React.useRef(null);
+    const headerScrollRef = React.useRef(null);
+    const headerTableRef = React.useRef(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [permLoading, setPermLoading] = useState(true);
@@ -202,11 +204,19 @@ const TableBaserow = ({ tableId, tableName }) => {
         const topEl = e.currentTarget;
         const tbl = tableScrollRef.current;
         if (tbl && tbl.scrollLeft !== topEl.scrollLeft) tbl.scrollLeft = topEl.scrollLeft;
+        const hdrTbl = headerTableRef.current;
+        if (hdrTbl) {
+            hdrTbl.style.transform = `translateX(-${topEl.scrollLeft}px)`;
+        }
     };
     const syncFromTable = (e) => {
         const tbl = e.currentTarget;
         const topEl = topScrollRef.current;
         if (topEl && topEl.scrollLeft !== tbl.scrollLeft) topEl.scrollLeft = tbl.scrollLeft;
+        const hdrTbl = headerTableRef.current;
+        if (hdrTbl) {
+            hdrTbl.style.transform = `translateX(-${tbl.scrollLeft}px)`;
+        }
     };
 
     const formatCellDisplay = (column, raw) => {
@@ -598,32 +608,38 @@ const TableBaserow = ({ tableId, tableName }) => {
             >
                 <div style={{ width: scrollContentWidth || '100%', height: 1 }} />
             </div>
-            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'scroll', scrollbarGutter: 'stable both-edges' }}>
-                <table className="table table-striped table-bordered table-hover table-sm align-middle" style={{ tableLayout: 'fixed', width: '100%' }}>
+            {/* Sticky header synced horizontally */}
+            <div ref={headerScrollRef} className="table-responsive" style={{ overflowX: 'hidden', overflowY: 'hidden', marginBottom: 0 }}>
+                <table ref={headerTableRef} className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
                     <thead className="table-dark text-center">
-                    <tr>
-                        {columns.map(column => (
-                            <th
-                                key={column.id}
-                                scope="col"
-                                className="align-middle"
-                                style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60 }}
-                            >
-                                <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
-                                {column.name}
-                                <span
-                                    onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
-                                    style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 8, cursor: 'col-resize', userSelect: 'none', zIndex: 2, background: 'transparent' }}
-                                    title="Przeciągnij, aby zmienić szerokość"
-                                />
+                        <tr>
+                            {columns.map(column => (
+                                <th
+                                    key={column.id}
+                                    scope="col"
+                                    className="align-middle"
+                                    style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60, top: 0 }}
+                                >
+                                    <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
+                                    {column.name}
+                                    <span
+                                        onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
+                                        style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 8, cursor: 'col-resize', userSelect: 'none', zIndex: 2, background: 'transparent' }}
+                                        title="Przeciągnij, aby zmienić szerokość"
+                                    />
+                                </th>
+                            ))}
+                            <th scope="col" className="align-middle" style={{ width: 120, textAlign: 'center' }}>
+                                Akcje
                             </th>
-                        ))}
-                        <th scope="col" className="align-middle" style={{ width: 120, textAlign: 'center' }}>
-                            Akcje
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable both-edges', marginTop: 0 }}>
+                <table className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <tbody>
                         {rows.map(row => (
                             <tr
                                 key={row.id}
@@ -651,7 +667,7 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 </td>
                             </tr>
                         ))}
-                </tbody>
+                    </tbody>
             </table>
             </div>
             <div className="d-flex justify-content-between align-items-center mt-2">

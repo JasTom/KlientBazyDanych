@@ -24,3 +24,15 @@ html, body, #root {
 body {
   background-color: #faf6f6b6; 
 }
+
+/* Wyłącz przewijanie całej strony, przewijane będą tylko wewnętrzne obszary */
+html, body {
+  overflow: hidden;
+}
+
+/* Przyklejone nagłówki tabeli wewnątrz scrollowalnego kontenera */
+.table-responsive thead th {
+  position: sticky;
+  top: 0;
+  z-index: 5; /* ponad wiersze */
+}
