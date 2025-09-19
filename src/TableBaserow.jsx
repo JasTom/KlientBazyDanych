@@ -441,7 +441,7 @@ const TableBaserow = ({ tableId, tableName }) => {
     return (
         <div className="container-fluid my-4">
             <div className="d-flex align-items-center justify-content-between mb-3">
-                <h1 className="h4 mb-0">Edytowalna tabela (ID: {tableName})</h1>
+                <h1 className="h4 mb-0">{tableName}</h1>
                 <div className="d-flex align-items-center gap-2" style={{ maxWidth: '60%' }}>
                     <input
                         className="form-control form-control-sm"

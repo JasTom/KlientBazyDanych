@@ -767,8 +767,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                 >
                                                                     {/* Pole wyszukiwania */}
                                                                     <div className="p-2 border-bottom">
-                                                                        <input
-                                                                            type="text"
+                                                <input
+                                                    type="text"
                                                                             className="form-control form-control-sm"
                                                                             placeholder="Szukaj..."
                                                                             value={searchTerms[fieldName] || ''}

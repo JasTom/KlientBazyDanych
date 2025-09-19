@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "./apiClient";
 import TableTile from "./TableTile";
 import { fetchUserPermissionsByTable, hasAnyViewPermission } from "./permissionsApi";
+import axios from 'axios';
+import { getStoredJWT, loginAndStoreJWT } from './jwtAuth.js';
 
 function TableList() {
 
@@ -12,6 +14,7 @@ function TableList() {
     const [error, setError] = useState(null);
     const [query, setQuery] = useState("");
     const [viewMode, setViewMode] = useState("grid"); // grid | list
+    const [dbNames, setDbNames] = useState({}); // { [database_id]: string }
 
     useEffect(() => {
         const fetchTables = async () => {
@@ -38,6 +41,36 @@ function TableList() {
 
         fetchTables();
     }, []);
+
+    // Po załadowaniu listy tabel pobierz nazwy baz z API JWT
+    useEffect(() => {
+        const loadDbNames = async () => {
+            if (!tables || tables.length === 0) return;
+            try {
+                const uniqueIds = Array.from(new Set(tables.map(t => t.database_id).filter(Boolean)));
+                if (uniqueIds.length === 0) return;
+
+                let token = getStoredJWT();
+                if (!token) {
+                    token = await loginAndStoreJWT();
+                }
+                if (!token) return;
+
+                const requests = uniqueIds.map(id =>
+                    axios.get(`https://api.baserow.io/api/applications/${id}/`, {
+                        headers: { Authorization: `JWT ${token}` }
+                    }).then(res => ({ id, name: res?.data?.name })).catch(() => ({ id, name: null }))
+                );
+                const results = await Promise.all(requests);
+                const map = {};
+                results.forEach(({ id, name }) => { if (id) map[id] = name || null; });
+                setDbNames(prev => ({ ...prev, ...map }));
+            } catch (_) {
+                // pomiń błędy
+            }
+        };
+        loadDbNames();
+    }, [tables]);
     if (loading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
 
@@ -115,7 +148,7 @@ function TableList() {
                             <span className={`badge ${getDbMeta(databaseId).bg}`} style={{ fontSize: ".9rem" }}>
                                 {getDbMeta(databaseId).emoji}
                             </span>
-                            <h2 className="h6 m-0">Baza:</h2>
+                            <h2 className="h6 m-0">Baza: {dbNames[databaseId] || `ID ${databaseId}`}</h2>
                         </div>
                         <span className="badge text-bg-light">{tablesForDb.length}</span>
                     </div>

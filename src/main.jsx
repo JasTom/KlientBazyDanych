@@ -4,6 +4,7 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import './index.css'; // własne style powinny być po Bootstrapie, aby nadpisać jego reguły
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
+import { loginAndStoreJWT } from './jwtAuth.js';
 
 // Znajdź element root
 const rootElement = document.getElementById('root');
@@ -18,3 +19,6 @@ root.render(
     </BrowserRouter>
   </StrictMode>
 );
+
+// Po załadowaniu aplikacji spróbuj zalogować się i wypisać token w konsoli
+loginAndStoreJWT();
