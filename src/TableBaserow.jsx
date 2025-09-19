@@ -398,6 +398,19 @@ const TableBaserow = ({ tableId, tableName }) => {
         return () => { mounted = false; };
     }, [tableId]);
 
+    // Zamknij formularz (modal) po naciśnięciu Escape
+    useEffect(() => {
+        if (!showForm) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                e.preventDefault();
+                closeForm();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showForm]);
+
     if (loading || permLoading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
     if (!canView) return <div className="alert alert-warning m-3">Brak uprawnień do podglądu tej tabeli.</div>;
@@ -612,7 +625,11 @@ const TableBaserow = ({ tableId, tableName }) => {
                 </thead>
                 <tbody>
                         {rows.map(row => (
-                            <tr key={row.id}>
+                            <tr
+                                key={row.id}
+                                onDoubleClick={() => { if (canUpdate) openEditForm(row); }}
+                                style={{ cursor: canUpdate ? 'pointer' : 'default' }}
+                            >
                                 {columns.map(column => (
                                     <td key={column.id} style={{ width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {formatCellDisplay(column, row[column.name])}

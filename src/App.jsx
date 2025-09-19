@@ -10,23 +10,14 @@ import TableBaserowWrapper from "./TableBaserowWrapper.jsx";
 function App() {
   return (
     <div className="min-vh-100 d-flex flex-column">
-    <Routes>
-      <Route path="/" element={
-        <>
-          <Header />
-          <TableList />
-          <Footer />
-        </>
-      }>
-      </Route>
-      <Route path="/tabela-baserow/:id/:name" element={
-        <>
-          <Header />
-          <TableBaserowWrapper />
-          <Footer />
-        </>
-      } />
-    </Routes>
+      <Header />
+      <main className="flex-grow-1">
+        <Routes>
+          <Route path="/" element={<TableList />} />
+          <Route path="/tabela-baserow/:id/:name" element={<TableBaserowWrapper />} />
+        </Routes>
+      </main>
+      <Footer />
     </div>
   );
 
