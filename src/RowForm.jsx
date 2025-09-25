@@ -482,8 +482,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 {column.primary && <span className="text-danger ms-1">*</span>}
                                             </label>
                                             
-                                            {/* Text/Number fields */}
-                                            {(fieldType.includes('text') || fieldType.includes('number') || fieldType.includes('url') || fieldType.includes('email') || fieldType.includes('phone')) && (
+                                            {/* Text/Number fields (bez long_text i auto_number, i nie dla read_only) */}
+                                            {!column.read_only && !fieldType.includes('long_text') && !fieldType.includes('auto_number') && (fieldType === 'text' || fieldType === 'number' || fieldType.includes('url') || fieldType.includes('email') || fieldType.includes('phone')) && (
                                                 <input
                                                     type={fieldType.includes('number') ? 'number' : 
                                                           fieldType.includes('email') ? 'email' : 
@@ -496,8 +496,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 />
                                             )}
                                             
-                                            {/* Date fields */}
-                                            {fieldType.includes('date') && (
+                                            {/* Date fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType.includes('date') && (
                                                 <input
                                                     type={column.date_include_time ? 'datetime-local' : 'date'}
                                                     className="form-control"
@@ -507,8 +507,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 />
                                             )}
                                             
-                                            {/* Boolean fields */}
-                                            {fieldType.includes('boolean') && (
+                                            {/* Boolean fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType.includes('boolean') && (
                                                 <select
                                                     className="form-select"
                                                     value={fieldValue}
@@ -521,8 +521,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </select>
                                             )}
                                             
-                                            {/* Single Select fields */}
-                                            {fieldType === 'single_select' && (
+                                            {/* Single Select fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType === 'single_select' && (
                                                 <select
                                                     className="form-select"
                                                     value={getSelectValue(fieldValue, 'single_select')}
@@ -538,8 +538,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </select>
                                             )}
                                             
-                                            {/* Multiple Select fields */}
-                                            {fieldType === 'multiple_select' && (
+                                            {/* Multiple Select fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType === 'multiple_select' && (
                                                 <div>
                                                     <div className="position-relative multiple-select-dropdown">
                                                         {/* Wyświetlanie wybranych opcji jako tagi */}
@@ -691,8 +691,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </div>
                                             )}
                                             
-                                            {/* Link Row fields */}
-                                            {fieldType === 'link_row' && (
+                                            {/* Link Row fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType === 'link_row' && (
                                                 <div>
                                                     {linkRowData[fieldName]?.loading ? (
                                                         <div className="text-center text-muted p-3">
@@ -858,8 +858,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </div>
                                             )}
                                             
-                                            {/* File fields */}
-                                            {fieldType.includes('file') && (
+                                            {/* File fields (nie dla read_only) */}
+                                            {!column.read_only && fieldType.includes('file') && (
                                                 <div>
                                                     {/* Wyświetlanie wybranych plików */}
                                                     {fieldValue && Array.isArray(fieldValue) && fieldValue.length > 0 && (
@@ -945,8 +945,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 </div>
                                             )}
                                             
-                                            {/* Long text fields */}
-                                            {fieldType.includes('long_text') && (
+                                            {/* Long text fields (nie dla read_only) */}
+                                            {fieldType.includes('long_text') && !column.read_only && (
                                                 <textarea
                                                     className="form-control"
                                                     rows={3}
@@ -956,14 +956,23 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 />
                                             )}
                                             
-                                            {/* Read-only fields */}
-                                            {column.read_only && (
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={formatCellValue(fieldValue)}
-                                                    disabled
-                                                />
+                                            {/* Read-only fields i auto_number (jako tylko do odczytu) */}
+                                            {(column.read_only || fieldType.includes('auto_number')) && (
+                                                fieldType.includes('long_text') ? (
+                                                    <textarea
+                                                        className="form-control"
+                                                        rows={3}
+                                                        value={formatCellValue(fieldValue)}
+                                                        disabled
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={formatCellValue(fieldValue)}
+                                                        disabled
+                                                    />
+                                                )
                                             )}
                                         </div>
                                     );
