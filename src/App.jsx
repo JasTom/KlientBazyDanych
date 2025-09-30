@@ -1,6 +1,7 @@
 import Header from "./Header.jsx"
 import Footer from "./Footer.jsx";
 import { Routes, Route } from "react-router-dom";
+import RequireAuth from "./RequireAuth.jsx";
 
 import TableList from "./TableList.jsx";
 import TableBaserow from "./TableBaserow.jsx";
@@ -13,8 +14,10 @@ function App() {
       <Header />
       <main className="flex-grow-1">
         <Routes>
-          <Route path="/" element={<TableList />} />
-          <Route path="/tabela-baserow/:id/:name" element={<TableBaserowWrapper />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/" element={<TableList />} />
+            <Route path="/tabela-baserow/:id/:name" element={<TableBaserowWrapper />} />
+          </Route>
         </Routes>
       </main>
       <Footer />

@@ -10,9 +10,14 @@ from dotenv import load_dotenv
 
 app = FastAPI(title="Baserow Proxy", version="0.1.0")
 
+# CORS: gdy allow_credentials=True, nie można używać "*" jako origin.
+# Skonfiguruj dozwolone originy przez ENV (np. FRONTEND_ORIGINS=http://127.0.0.1:5173,http://localhost:5173)
+frontend_origins = os.getenv("FRONTEND_ORIGINS", "http://127.0.0.1:5173").split(",")
+frontend_origins = [o.strip() for o in frontend_origins if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,6 +37,8 @@ BASEROW_BASE_URL = os.getenv("BASEROW_BASE_URL", "https://api.baserow.io/api")
 BASEROW_AUTH_TOKEN = os.getenv("BASEROW_AUTH_TOKEN", "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC").strip()
 BASEROW_JWT_EMAIL = os.getenv("BASEROW_JWT_EMAIL", "tomaszjastrzebski1996@gmail.com").strip()
 BASEROW_JWT_PASSWORD = os.getenv("BASEROW_JWT_PASSWORD", "Q9JpX!AsSve2ifT").strip()
+AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "jwt").strip()
+LOGIN_URL = os.getenv("LOGIN_URL", "http://127.0.0.1:1000/login").strip()
 
 
 def _get_token_header_value() -> str:
@@ -102,6 +109,17 @@ async def _proxy_request_with_token(request: Request, full_path: str) -> Respons
 @app.api_route("/token/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def token_proxy(full_path: str, request: Request):
     return await _proxy_request_with_token(request, full_path)
+
+
+@app.get("/auth/status")
+async def auth_status(request: Request):
+    # Sprawdzanie obecności ciasteczka po stronie serwera (działa też dla HttpOnly)
+    jwt_cookie = request.cookies.get(AUTH_COOKIE_NAME, "").strip()
+    return {
+        "authenticated": bool(jwt_cookie),
+        "login_url": LOGIN_URL,
+        "cookie_name": AUTH_COOKIE_NAME,
+    }
 
 
 _jwt_cache = {"token": None, "ts": 0.0}
