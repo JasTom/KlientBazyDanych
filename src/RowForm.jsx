@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import apiClient, { AUTH_TOKEN } from './apiClient';
+import apiClient from './apiClient';
 import { Form, Dropdown, ButtonGroup, Button } from 'react-bootstrap';
 
 const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {

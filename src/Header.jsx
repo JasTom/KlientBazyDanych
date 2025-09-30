@@ -6,7 +6,6 @@ import NavDropdown from 'react-bootstrap/NavDropdown';
 import { Link } from 'react-router-dom';
 import { fetchUserPermissionsByTable, hasAnyViewPermission } from './permissionsApi';
 import axios from 'axios';
-import { getStoredJWT, loginAndStoreJWT } from './jwtAuth.js';
 
 import React, { useEffect, useState } from "react";
 import apiClient from "./apiClient";
@@ -41,7 +40,7 @@ function Header() {
         fetchTables();
     }, []);
 
-    // Po załadowaniu listy tabel pobierz nazwy baz (applications) po JWT
+    // Po załadowaniu listy tabel pobierz nazwy baz (applications) przez backend JWT
     useEffect(() => {
         const loadDbNames = async () => {
             if (!tables || tables.length === 0) return;
@@ -50,16 +49,10 @@ function Header() {
                 const ids = Array.from(new Set(tables.map(t => t.database_id).filter(Boolean)));
                 if (ids.length === 0) return;
 
-                let token = getStoredJWT();
-                if (!token) {
-                    token = await loginAndStoreJWT();
-                }
-                if (!token) return;
-
                 const requests = ids.map(id =>
-                    axios.get(`https://api.baserow.io/api/applications/${id}/`, {
-                        headers: { Authorization: `JWT ${token}` }
-                    }).then(res => ({ id, name: res?.data?.name })).catch(() => ({ id, name: null }))
+                    axios.get(`http://127.0.0.1:8000/jwt/applications/${id}`)
+                        .then(res => ({ id, name: res?.data?.name }))
+                        .catch(() => ({ id, name: null }))
                 );
                 const results = await Promise.all(requests);
                 const nameMap = {};
