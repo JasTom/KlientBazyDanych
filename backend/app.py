@@ -39,6 +39,8 @@ BASEROW_JWT_EMAIL = os.getenv("BASEROW_JWT_EMAIL", "tomaszjastrzebski1996@gmail.
 BASEROW_JWT_PASSWORD = os.getenv("BASEROW_JWT_PASSWORD", "Q9JpX!AsSve2ifT").strip()
 AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "jwt").strip()
 LOGIN_URL = os.getenv("LOGIN_URL", "http://127.0.0.1:1000/login").strip()
+USER_VALIDATE_URL = os.getenv("USER_VALIDATE_URL", "http://127.0.0.1:1000/api/ext/validate").strip()
+USER_VALIDATE_AUTH = os.getenv("USER_VALIDATE_AUTH", "Bearer yOuydvv90vibllGO-lCmQy-sK00eW0TSHGMoD_4P0Cs").strip()
 
 
 def _get_token_header_value() -> str:
@@ -159,5 +161,47 @@ async def get_application_by_id(app_id: int):
     if r.status_code >= 400:
         raise HTTPException(status_code=r.status_code, detail=r.text)
     return r.json()
+
+
+@app.get("/auth/me")
+async def auth_me(request: Request):
+    jwt_cookie = request.cookies.get(AUTH_COOKIE_NAME, "").strip()
+    if not jwt_cookie:
+        return {"authenticated": False}
+
+    headers = {
+        "Authorization": USER_VALIDATE_AUTH,
+        "Content-Type": "application/json",
+    }
+    payload = {"token": jwt_cookie}
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(USER_VALIDATE_URL, json=payload, headers=headers)
+
+    if r.status_code >= 400:
+        raise HTTPException(status_code=r.status_code, detail=r.text)
+
+    data = r.json()
+    # Oczekiwany format:
+    # {"valid": true, "id": "...", "username": "...", "email": "...", "exp": 123, "allowed": true, "role": "EMPLOYEE"}
+    return {
+        "authenticated": bool(data.get("valid")),
+        "id": data.get("id"),
+        "username": data.get("username"),
+        "email": data.get("email"),
+        "exp": data.get("exp"),
+        "allowed": data.get("allowed"),
+        "role": data.get("role"),
+    }
+
+
+@app.post("/auth/logout")
+async def auth_logout(response: Response):
+    # Usuń ciasteczko uwierzytelniające
+    try:
+        response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
+    except Exception:
+        pass
+    return {"ok": True}
 
 

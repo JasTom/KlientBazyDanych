@@ -3,6 +3,8 @@ import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import Tooltip from 'react-bootstrap/Tooltip';
 import { Link } from 'react-router-dom';
 import { fetchUserPermissionsByTable, hasAnyViewPermission } from './permissionsApi';
 import axios from 'axios';
@@ -16,6 +18,7 @@ function Header() {
     const [error, setError] = useState(null);
     const [dbNames, setDbNames] = useState({}); // { [database_id]: name }
     const [tablesFilter, setTablesFilter] = useState('');
+    const [currentUser, setCurrentUser] = useState(null); // { username, role, email, id, exp, allowed }
 
     useEffect(() => {
         const fetchTables = async () => {
@@ -64,6 +67,24 @@ function Header() {
         };
         loadDbNames();
     }, [tables]);
+
+    // Pobierz informacje o aktualnie zalogowanym użytkowniku z backendu (na podstawie cookie HttpOnly)
+    useEffect(() => {
+        const loadCurrentUser = async () => {
+            try {
+                const resp = await fetch("http://127.0.0.1:8000/auth/me", { credentials: "include" });
+                const data = await resp.json();
+                if (data?.authenticated) {
+                    setCurrentUser(data);
+                } else {
+                    setCurrentUser(null);
+                }
+            } catch (_e) {
+                setCurrentUser(null);
+            }
+        };
+        loadCurrentUser();
+    }, []);
     if (loading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
 
@@ -128,6 +149,50 @@ function Header() {
                                 })}
                             </div>
                         </NavDropdown>
+                    </Nav>
+                    <Nav className="ms-auto align-items-center gap-3">
+                        {currentUser ? (
+                            <>
+                                <Navbar.Text className="text-light">
+                                    Zalogowany:{' '}
+                                    <OverlayTrigger
+                                        placement="bottom"
+                                        overlay={
+                                            <Tooltip id="user-tooltip">
+                                                <div><strong>Użytkownik:</strong> {currentUser.username}</div>
+                                                {currentUser.email && <div><strong>E-mail:</strong> {currentUser.email}</div>}
+                                                {currentUser.role && <div><strong>Rola:</strong> {currentUser.role}</div>}
+                                                {currentUser.id && <div><strong>ID:</strong> {currentUser.id}</div>}
+                                                {currentUser.exp && <div><strong>Wygasa:</strong> {new Date(currentUser.exp * 1000).toLocaleString()}</div>}
+                                                {typeof currentUser.allowed !== 'undefined' && <div><strong>Allowed:</strong> {String(currentUser.allowed)}</div>}
+                                            </Tooltip>
+                                        }
+                                    >
+                                        <span className="ms-1 fw-bold" style={{ cursor: 'help' }}>{currentUser.username}</span>
+                                    </OverlayTrigger>
+                                </Navbar.Text>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-light"
+                                    onClick={async () => {
+                                        try {
+                                            await fetch("http://127.0.0.1:8000/auth/logout", {
+                                                method: "POST",
+                                                credentials: "include",
+                                            });
+                                        } catch (_) { /* ignore */ }
+                                        // Odśwież stronę po wylogowaniu
+                                        if (typeof window !== 'undefined') {
+                                            window.location.reload();
+                                        }
+                                    }}
+                                >
+                                    Wyloguj
+                                </button>
+                            </>
+                        ) : (
+                            <Navbar.Text className="text-light">Nieznany użytkownik</Navbar.Text>
+                        )}
                     </Nav>
                 </Navbar.Collapse>
             </Container>
