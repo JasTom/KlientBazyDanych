@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Klient frontendu kieruje do backendu FastAPI (konfigurowalnie przez VITE_BACKEND_URL)
-const BACKEND_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
+export const BACKEND_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
   ? import.meta.env.VITE_BACKEND_URL
   : 'http://127.0.0.1:8000';
 

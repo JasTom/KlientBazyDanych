@@ -10,7 +10,7 @@ import { fetchUserPermissionsByTable, hasAnyViewPermission } from './permissions
 import axios from 'axios';
 
 import React, { useEffect, useState } from "react";
-import apiClient from "./apiClient";
+import apiClient, { BACKEND_BASE_URL } from "./apiClient";
 
 function Header() {
     const [tables, setTables] = useState([]);
@@ -53,7 +53,7 @@ function Header() {
                 if (ids.length === 0) return;
 
                 const requests = ids.map(id =>
-                    axios.get(`http://127.0.0.1:8000/jwt/applications/${id}`)
+                    axios.get(`${BACKEND_BASE_URL}/jwt/applications/${id}`)
                         .then(res => ({ id, name: res?.data?.name }))
                         .catch(() => ({ id, name: null }))
                 );
@@ -72,7 +72,7 @@ function Header() {
     useEffect(() => {
         const loadCurrentUser = async () => {
             try {
-                const resp = await fetch("http://127.0.0.1:8000/auth/me", { credentials: "include" });
+                const resp = await fetch(`${BACKEND_BASE_URL}/auth/me`, { credentials: "include" });
                 const data = await resp.json();
                 if (data?.authenticated) {
                     setCurrentUser(data);
@@ -176,7 +176,7 @@ function Header() {
                                     className="btn btn-sm btn-outline-light"
                                     onClick={async () => {
                                         try {
-                                            await fetch("http://127.0.0.1:8000/auth/logout", {
+                                            await fetch(`${BACKEND_BASE_URL}/auth/logout`, {
                                                 method: "POST",
                                                 credentials: "include",
                                             });

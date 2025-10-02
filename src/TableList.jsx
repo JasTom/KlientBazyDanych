@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "./apiClient";
+import apiClient, { BACKEND_BASE_URL } from "./apiClient";
 import TableTile from "./TableTile";
 import { fetchUserPermissionsByTable, hasAnyViewPermission } from "./permissionsApi";
 import axios from 'axios';
@@ -50,7 +50,7 @@ function TableList() {
                 if (uniqueIds.length === 0) return;
 
                 const requests = uniqueIds.map(id =>
-                    axios.get(`http://127.0.0.1:8000/jwt/applications/${id}`)
+                    axios.get(`${BACKEND_BASE_URL}/jwt/applications/${id}`)
                         .then(res => ({ id, name: res?.data?.name })).catch(() => ({ id, name: null }))
                 );
                 const results = await Promise.all(requests);

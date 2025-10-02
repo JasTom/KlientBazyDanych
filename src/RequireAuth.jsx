@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BACKEND_BASE_URL } from "./apiClient";
 import { Outlet } from "react-router-dom";
 
 export default function RequireAuth() {
@@ -7,7 +8,7 @@ export default function RequireAuth() {
 
   useEffect(() => {
     // Weryfikacja wyłącznie po stronie backendu (działa także dla HttpOnly)
-    fetch("http://127.0.0.1:8000/auth/status", { credentials: "include" })
+    fetch(`${BACKEND_BASE_URL}/auth/status`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (data?.authenticated) {
