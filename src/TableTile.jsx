@@ -6,7 +6,6 @@ function TableTile(props) {
     const navigate = useNavigate();
 
     const handleClick = (id, name) => {
-        console.log(` click me`)
         navigate(`/tabela-baserow/${id}/${name}`)
     }
 

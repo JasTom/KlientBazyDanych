@@ -14,6 +14,7 @@ function TableList() {
     const [query, setQuery] = useState("");
     const [viewMode, setViewMode] = useState("grid"); // grid | list
     const [dbNames, setDbNames] = useState({}); // { [database_id]: string }
+    const [tokenByTable, setTokenByTable] = useState(new Map()); // Map<tableId, tokenIndex>
 
     useEffect(() => {
         const fetchTables = async () => {
@@ -24,12 +25,32 @@ function TableList() {
                     fetchUserPermissionsByTable()
                 ]);
 
-                const allTables = tablesResp.data || [];
+                const allTables = (tablesResp.data || []).map((t) => ({ ...t }));
                 // Filtr: pokazuj tylko te tabele, dla których użytkownik ma co najmniej Podgląd
                 const allowed = allTables.filter(t => {
                     const set = permsMap.get(Number(t.id)) || permsMap.get(Number(t.table_id));
                     return hasAnyViewPermission(set);
                 });
+                // Zbuduj mapę tableId -> token index
+                const map = new Map();
+                allowed.forEach(t => {
+                    const tid = Number(t.id || t.table_id);
+                    if (Number.isFinite(tid)) {
+                        const idx = Number.isFinite(Number(t._token_index)) ? Number(t._token_index) : 0;
+                        map.set(tid, idx);
+                    }
+                });
+                setTokenByTable(map);
+                // Persistuj mapowanie do localStorage, aby inne widoki mogły używać właściwego tokenu
+                try {
+                    // wyczyść stare wpisy
+                    Object.keys(localStorage).forEach((k) => { if (k.startsWith('tok_')) localStorage.removeItem(k); });
+                } catch (_) {}
+                try {
+                    map.forEach((idx, tid) => {
+                        localStorage.setItem(`tok_${tid}`, String(idx));
+                    });
+                } catch (_) {}
                 setTables(allowed);
             } catch (err) {
                 setError(err.message);

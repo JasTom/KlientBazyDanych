@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 from typing import Dict
 
@@ -34,7 +35,13 @@ load_dotenv()
 
 # Konfiguracja z ENV (nie logujemy sekretów)
 BASEROW_BASE_URL = os.getenv("BASEROW_BASE_URL", "https://api.baserow.io/api")
-BASEROW_AUTH_TOKEN = os.getenv("BASEROW_AUTH_TOKEN", "Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC").strip()
+# Obsługa wielu tokenów: BASEROW_AUTH_TOKENS (lista rozdzielona przecinkami) lub BASEROW_AUTH_TOKEN (pojedynczy)
+_raw_tokens = os.getenv("BASEROW_AUTH_TOKENS") or os.getenv("BASEROW_AUTH_TOKEN", "").strip()
+if _raw_tokens:
+    BASEROW_AUTH_TOKENS = [t.strip() for t in _raw_tokens.split(",") if t.strip()]
+else:
+    BASEROW_AUTH_TOKENS = []
+BASEROW_AUTH_TOKENS = BASEROW_AUTH_TOKENS or ["Token Ldhe8HXyypxOR4zoGMrvTKj0EZ3dr7iC"]
 BASEROW_JWT_EMAIL = os.getenv("BASEROW_JWT_EMAIL", "tomaszjastrzebski1996@gmail.com").strip()
 BASEROW_JWT_PASSWORD = os.getenv("BASEROW_JWT_PASSWORD", "Q9JpX!AsSve2ifT").strip()
 AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "jwt").strip()
@@ -43,11 +50,21 @@ USER_VALIDATE_URL = os.getenv("USER_VALIDATE_URL", "http://127.0.0.1:1000/api/ex
 USER_VALIDATE_AUTH = os.getenv("USER_VALIDATE_AUTH", "Bearer yOuydvv90vibllGO-lCmQy-sK00eW0TSHGMoD_4P0Cs").strip()
 
 
-def _get_token_header_value() -> str:
-    token_value = BASEROW_AUTH_TOKEN
-    if token_value and not token_value.lower().startswith("token "):
-        token_value = f"Token {token_value}"
+def _normalize_token(token_value: str) -> str:
+    if token_value and not token_value.lower().startswith("token ") and not token_value.lower().startswith("jwt "):
+        return f"Token {token_value}"
     return token_value
+
+
+def _get_token_header_value(index: int | None = None) -> str:
+    try:
+        if index is None:
+            token_value = BASEROW_AUTH_TOKENS[0]
+        else:
+            token_value = BASEROW_AUTH_TOKENS[int(index)]
+    except (IndexError, ValueError):
+        token_value = BASEROW_AUTH_TOKENS[0]
+    return _normalize_token(token_value)
 
 
 def _filter_response_headers(headers: Dict[str, str]) -> Dict[str, str]:
@@ -67,25 +84,84 @@ def _filter_response_headers(headers: Dict[str, str]) -> Dict[str, str]:
 
 
 async def _proxy_request_with_token(request: Request, full_path: str) -> Response:
-    token_header = _get_token_header_value()
-    if not token_header:
-        raise HTTPException(status_code=500, detail="Brak BASEROW_AUTH_TOKEN w konfiguracji")
-
-    url = f"{BASEROW_BASE_URL.rstrip('/')}/{full_path}"
     method = request.method.upper()
+    url = f"{BASEROW_BASE_URL.rstrip('/')}/{full_path}"
     query_string = request.url.query
     if query_string:
         url = f"{url}?{query_string}"
 
-    # Skopiuj tylko bezpieczne nagłówki; pomiń Authorization (ustawimy własny), Host, Content-Length itp.
+    # Odczytaj żądany indeks tokenu z nagłówka (opcjonalnie)
+    requested_index_header = request.headers.get("X-Baserow-Token-Index", "").strip()
+    token_index: int | None = None
+    if requested_index_header != "":
+        try:
+            token_index = int(requested_index_header)
+        except ValueError:
+            token_index = None
+
+    # Skopiuj tylko bezpieczne nagłówki z pominięciem Authorization itp.
     safe_request_headers = {"content-type", "accept"}
-    forward_headers: Dict[str, str] = {}
+    forward_headers_base: Dict[str, str] = {}
     for k, v in request.headers.items():
         lk = k.lower()
-        if lk in {"authorization", "host", "content-length", "connection", "accept-encoding", "origin", "referer"}:
+        if lk in {"authorization", "host", "content-length", "connection", "accept-encoding", "origin", "referer", "x-baserow-token-index"}:
             continue
         if lk in safe_request_headers:
-            forward_headers[k] = v
+            forward_headers_base[k] = v
+
+    # Agregacja dla all-tables jeśli nie wskazano konkretnego tokenu
+    if method == "GET" and full_path.rstrip("/") == "database/tables/all-tables" and token_index is None:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=None) as client:
+            tasks = []
+            urls = []
+            for idx, _ in enumerate(BASEROW_AUTH_TOKENS):
+                h = dict(forward_headers_base)
+                h["Authorization"] = _get_token_header_value(idx)
+                tasks.append(client.get(url, headers=h))
+                urls.append(url)
+            try:
+                responses = await asyncio.gather(*tasks, return_exceptions=True)
+            except Exception as e:
+                raise HTTPException(status_code=502, detail=f"Upstream error during aggregation: {str(e)}")
+
+        aggregated: list = []
+        for idx, resp in enumerate(responses):
+            if isinstance(resp, Exception):
+                # Pomijaj błędne odpowiedzi pojedynczych workspaces
+                continue
+            # Proste logi diagnostyczne (dev)
+            try:
+                print(f"[proxy] GET {urls[idx]} (token_index={idx}) -> {resp.status_code}")
+            except Exception:
+                pass
+            if resp.status_code >= 400:
+                continue
+            try:
+                data = resp.json()
+            except Exception:
+                continue
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        item = dict(item)
+                        item.setdefault("_token_index", idx)
+                        aggregated.append(item)
+            elif isinstance(data, dict) and isinstance(data.get("results"), list):
+                for item in data["results"]:
+                    if isinstance(item, dict):
+                        row = dict(item)
+                        row.setdefault("_token_index", idx)
+                        aggregated.append(row)
+
+        from starlette.responses import JSONResponse
+        return JSONResponse(aggregated)
+
+    # Zwykłe proxowanie z wybranym lub domyślnym tokenem
+    token_header = _get_token_header_value(token_index)
+    if not token_header:
+        raise HTTPException(status_code=500, detail="Brak BASEROW_AUTH_TOKEN(S) w konfiguracji")
+
+    forward_headers = dict(forward_headers_base)
     forward_headers["Authorization"] = token_header
 
     body = await request.body()

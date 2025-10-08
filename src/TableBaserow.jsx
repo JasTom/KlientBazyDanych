@@ -324,7 +324,9 @@ const TableBaserow = ({ tableId, tableName }) => {
     useEffect(() => {
         const fetchColumns = async () => {
             try {
-                const response = await apiClient.get(`/database/fields/table/${tableId}/`);
+                const response = await apiClient.get(`/database/fields/table/${tableId}/`, {
+                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                });
                 setColumns(response.data);
             } catch (err) {
                 setError(err.message);
@@ -353,7 +355,9 @@ const TableBaserow = ({ tableId, tableName }) => {
                     url += `&filters=${encodeURIComponent(filtersJson)}`;
                 }
 
-                const response = await apiClient.get(url);
+                const response = await apiClient.get(url, {
+                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                });
                 setRows(response.data.results);
                 setCount(response.data.count ?? 0);
             } catch (err) {
@@ -452,7 +456,9 @@ const TableBaserow = ({ tableId, tableName }) => {
     const deleteRow = async (rowId) => {
         if (!window.confirm('Czy na pewno chcesz usunąć ten wiersz?')) return;
         try {
-            await apiClient.delete(`/database/rows/table/${tableId}/${rowId}/`);
+            await apiClient.delete(`/database/rows/table/${tableId}/${rowId}/`, {
+                headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+            });
             setRows(prevRows => prevRows.filter(row => row.id !== rowId));
             setCount(prev => prev - 1);
         } catch (err) {

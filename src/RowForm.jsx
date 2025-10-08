@@ -80,7 +80,9 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
 
         try {
             // Pobierz kolumny powiązanej tabeli
-            const columnsResponse = await apiClient.get(`/database/fields/table/${column.link_row_table_id}/`);
+            const columnsResponse = await apiClient.get(`/database/fields/table/${column.link_row_table_id}/`, {
+                headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
+            });
             const linkedColumns = columnsResponse.data || [];
             
             // Znajdź pole primary
@@ -93,7 +95,9 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             let hasMore = true;
 
             while (hasMore) {
-                const response = await apiClient.get(`/database/rows/table/${column.link_row_table_id}/?user_field_names=true&page=${page}&size=${pageSize}`);
+                const response = await apiClient.get(`/database/rows/table/${column.link_row_table_id}/?user_field_names=true&page=${page}&size=${pageSize}`, {
+                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
+                });
                 const rows = response.data.results || [];
                 allRows = [...allRows, ...rows];
                 
@@ -269,7 +273,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         try {
             const response = await apiClient.post('/user-files/upload-file/', formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
+                    'Content-Type': 'multipart/form-data',
+                    'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? ''
                 }
             });
             return response.data;
@@ -436,11 +441,15 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             
             if (editingRow) {
                 // Edycja istniejącego wiersza
-                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, cleanedData);
+                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, cleanedData, {
+                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                });
                 onSuccess('updated', response.data);
             } else {
                 // Dodawanie nowego wiersza
-                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, cleanedData);
+                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, cleanedData, {
+                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                });
                 onSuccess('created', response.data);
             }
             onClose();

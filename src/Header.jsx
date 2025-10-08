@@ -17,6 +17,7 @@ function Header() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dbNames, setDbNames] = useState({}); // { [database_id]: name }
+    const [tokenByTable, setTokenByTable] = useState(new Map()); // Map<tableId, tokenIndex>
     const [tablesFilter, setTablesFilter] = useState('');
     const [currentUser, setCurrentUser] = useState(null); // { username, role, email, id, exp, allowed }
 
@@ -27,11 +28,29 @@ function Header() {
                     apiClient.get("/database/tables/all-tables/"),
                     fetchUserPermissionsByTable()
                 ]);
-                const all = tablesResp.data || [];
+                const all = (tablesResp.data || []).map(t => ({ ...t }));
                 const allowed = all.filter(t => {
                     const set = permsMap.get(Number(t.id)) || permsMap.get(Number(t.table_id));
                     return hasAnyViewPermission(set);
                 });
+                const map = new Map();
+                allowed.forEach(t => {
+                    const tid = Number(t.id || t.table_id);
+                    if (Number.isFinite(tid)) {
+                        const idx = Number.isFinite(Number(t._token_index)) ? Number(t._token_index) : 0;
+                        map.set(tid, idx);
+                    }
+                });
+                setTokenByTable(map);
+                // Zapisz mapowanie w localStorage, ale nie nadpisuj istniejących wpisów jeśli są
+                try {
+                    map.forEach((idx, tid) => {
+                        const key = `tok_${tid}`;
+                        if (localStorage.getItem(key) == null) {
+                            localStorage.setItem(key, String(idx));
+                        }
+                    });
+                } catch (_) {}
                 setTables(allowed);
             } catch (err) {
                 setError(err.message);
