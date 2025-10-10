@@ -1,0 +1,8 @@
+BASEROW_BASE_URL=https://api.baserow.io/api
+BASEROW_AUTH_TOKENS=Token xxxxx,Token xxxxx
+BASEROW_JWT_EMAIL=xxxx@gmail.com
+BASEROW_JWT_PASSWORD=pass
+AUTH_COOKIE_NAME=jwt
+LOGIN_URL=http://127.0.0.1:1000/login
+USER_VALIDATE_URL=http://127.0.0.1:1000/api/ext/validate
+USER_VALIDATE_AUTH = Bearer sssssss
