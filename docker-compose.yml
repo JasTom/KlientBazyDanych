@@ -20,7 +20,7 @@ services:
       dockerfile: Dockerfile.frontend
     container_name: baserow-frontend
     environment:
-      - VITE_BACKEND_URL=http://backend:8000
+      - VITE_BACKEND_URL=/frontend-baserow/api
     ports:
       - "5173:80"
     depends_on:
