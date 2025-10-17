@@ -14,14 +14,14 @@ export default function RequireAuth() {
         if (data?.authenticated) {
           setAllowed(true);
         } else {
-          const loginUrl = data?.login_url || "http://127.0.0.1:1000/login";
+          const loginUrl = data?.login_url || "/login";
           if (typeof window !== "undefined") {
             window.location.href = loginUrl;
           }
         }
       })
       .catch(() => {
-        const fallback = "http://127.0.0.1:1000/login";
+        const fallback = "/login";
         if (typeof window !== "undefined") {
           window.location.href = fallback;
         }

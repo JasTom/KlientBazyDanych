@@ -6,3 +6,4 @@ AUTH_COOKIE_NAME=jwt
 LOGIN_URL=http://127.0.0.1:1000/login
 USER_VALIDATE_URL=http://127.0.0.1:1000/api/ext/validate
 USER_VALIDATE_AUTH = Bearer sssssss
+VITE_BACKEND_URL=http://172.18.0.70:1000/frontend-baserow/api
