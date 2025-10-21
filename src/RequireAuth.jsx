@@ -11,20 +11,25 @@ export default function RequireAuth() {
     fetch(`${BACKEND_BASE_URL}/auth/status`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
+        // Tymczasowe logi diagnostyczne
+        try {
+          console.log("[auth/status] response:", data);
+          // Próba wyświetlenia ciasteczek (jeśli JWT jest HttpOnly, nie będzie widoczny w document.cookie)
+          console.log("[cookies] document.cookie=", typeof document !== "undefined" ? document.cookie : undefined);
+          if (data && data.cookie_name) {
+            console.log("[auth] expected cookie name:", data.cookie_name);
+          }
+        } catch (_) {}
         if (data?.authenticated) {
           setAllowed(true);
         } else {
-          const loginUrl = data?.login_url || "/login";
-          if (typeof window !== "undefined") {
-            window.location.href = loginUrl;
-          }
+          // Tymczasowo zablokowane przekierowanie dla debugowania
+          // Zostawiamy allowed=false, aby nie wpuszczać dalej, ale nie przekierowujemy
         }
       })
-      .catch(() => {
-        const fallback = "/login";
-        if (typeof window !== "undefined") {
-          window.location.href = fallback;
-        }
+      .catch((err) => {
+        // Tymczasowo bez przekierowania, tylko log błędu
+        try { console.error("[auth/status] error:", err); } catch (_) {}
       })
       .finally(() => setChecking(false));
   }, []);
