@@ -8,7 +8,7 @@ services:
     env_file:
       - ./.env
     environment:
-      - FRONTEND_ORIGINS=http://172.18.0.70:1000,http://127.0.0.1:5173,http://localhost:5173,http://172.18.0.71:80
+      - FRONTEND_ORIGINS=http://172.18.0.70:1000,http://127.0.0.1:5173,http://localhost:5173,http://172.18.0.71:80,http://172.16.0.3:1000
       - LOGIN_URL=http://172.18.0.71:80/login
       - USER_VALIDATE_URL=http://172.18.0.71:80/api/ext/validate
       # Wstaw ważny token API z dashboardstack (Admin → API Keys) zamiast PLACEHOLDER
