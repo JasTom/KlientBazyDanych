@@ -25,6 +25,35 @@ app.add_middleware(
 )
 
 
+# Proste logowanie wszystkich zapytań HTTP do konsoli
+@app.middleware("http")
+async def log_http_requests(request: Request, call_next):
+    start_ts = time.time()
+    method = request.method
+    path = request.url.path
+    query = request.url.query
+    client_ip = (request.client.host if request.client else "-")
+    ua = request.headers.get("user-agent", "")
+    referer = request.headers.get("referer", "")
+    try:
+        response = await call_next(request)
+        status = getattr(response, "status_code", 0)
+        duration_ms = int((time.time() - start_ts) * 1000)
+        try:
+            q = ("?" + query) if query else ""
+            print(f"[http] {method} {path}{q} -> {status} {duration_ms}ms ip={client_ip} ua=\"{ua[:120]}\" ref=\"{referer[:120]}\"")
+        except Exception:
+            pass
+        return response
+    except Exception as e:
+        duration_ms = int((time.time() - start_ts) * 1000)
+        try:
+            print(f"[http][error] {method} {path} ({duration_ms}ms) ip={client_ip} err={type(e).__name__}: {str(e)[:200]}")
+        except Exception:
+            pass
+        raise
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
