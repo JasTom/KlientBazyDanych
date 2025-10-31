@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Kontener dla TableTile */
 .TableTileContainer {
   display: flex;
