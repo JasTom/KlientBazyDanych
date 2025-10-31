@@ -7,3 +7,7 @@ LOGIN_URL=http://127.0.0.1:1000/login
 USER_VALIDATE_URL=http://127.0.0.1:1000/api/ext/validate
 USER_VALIDATE_AUTH = Bearer sssssss
 VITE_BACKEND_URL=/frontend-baserow/api
+FRONTEND_ORIGINS=http://172.xx.xx.xx:1000,http://127.x.x.x:5173
+
+
+
