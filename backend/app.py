@@ -7,7 +7,6 @@ import httpx
 from fastapi import FastAPI, Request, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
-from dotenv import load_dotenv
 
 app = FastAPI(title="Baserow Proxy", version="0.1.0")
 
@@ -59,8 +58,6 @@ async def health():
     return {"status": "ok"}
 
 
-# Wczytaj .env jeśli istnieje
-load_dotenv()
 
 # Konfiguracja z ENV (nie logujemy sekretów)
 BASEROW_BASE_URL = os.getenv("BASEROW_BASE_URL", "https://api.baserow.io/api")
