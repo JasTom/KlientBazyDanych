@@ -7,7 +7,6 @@ services:
     container_name: baserow-backend
     env_file:
       - ./.env
-    environment:
     ports:
       - "8000:8000"
     networks:
