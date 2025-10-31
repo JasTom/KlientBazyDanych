@@ -8,8 +8,6 @@ services:
     env_file:
       - ./.env
     environment:
-      # Wstaw ważny token API z dashboardstack (Admin → API Keys) zamiast PLACEHOLDER
-      - USER_VALIDATE_AUTH=Bearer PLACEHOLDER_API_TOKEN
     ports:
       - "8000:8000"
     networks:
