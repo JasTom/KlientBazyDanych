@@ -23,13 +23,19 @@ export default function RequireAuth() {
         if (data?.authenticated) {
           setAllowed(true);
         } else {
-          // Tymczasowo zablokowane przekierowanie dla debugowania
-          // Zostawiamy allowed=false, aby nie wpuszczać dalej, ale nie przekierowujemy
+          // Brak sesji -> przekieruj na stronę logowania wskazaną przez backend
+          try {
+            const target = (data && data.login_url) ? String(data.login_url) : `${window.location.origin}/login`;
+            window.location.href = target;
+          } catch (_) {
+            try { window.location.href = `${window.location.origin}/login`; } catch { /* no-op */ }
+          }
         }
       })
       .catch((err) => {
-        // Tymczasowo bez przekierowania, tylko log błędu
+        // W razie błędu sieci spróbuj przekierować na /login
         try { console.error("[auth/status] error:", err); } catch (_) {}
+        try { window.location.href = `${window.location.origin}/login`; } catch { /* no-op */ }
       })
       .finally(() => setChecking(false));
   }, []);
