@@ -10,13 +10,9 @@ import TableBaserowWrapper from "./TableBaserowWrapper.jsx";
 
 function App() {
   return (
-    <div className="min-vh-100 d-flex flex-column">
+    <div className="min-h-screen flex flex-col bg-white">
       <Header />
-      {/* Przykładowy baner Tailwind */}
-      <div className="bg-emerald-600 text-white px-4 py-2 text-sm">
-        Tailwind działa — ten baner jest ostylowany klasami Tailwind.
-      </div>
-      <main className="flex-grow-1">
+      <main className="flex-1">
         <Routes>
           <Route element={<RequireAuth />}>
             <Route path="/" element={<TableList />} />
