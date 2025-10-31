@@ -12,6 +12,10 @@ function App() {
   return (
     <div className="min-vh-100 d-flex flex-column">
       <Header />
+      {/* Przykładowy baner Tailwind */}
+      <div className="bg-emerald-600 text-white px-4 py-2 text-sm">
+        Tailwind działa — ten baner jest ostylowany klasami Tailwind.
+      </div>
       <main className="flex-grow-1">
         <Routes>
           <Route element={<RequireAuth />}>
