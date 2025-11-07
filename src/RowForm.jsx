@@ -87,7 +87,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         try {
             // Pobierz kolumny powiązanej tabeli
             const columnsResponse = await apiClient.get('/database/fields/table/' + column.link_row_table_id + '/', {
-                headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
+                headers: { 'X-Baserow-Token-Index': (localStorage.getItem('tok_' + column.link_row_table_id) ?? localStorage.getItem('tok_' + tableId) ?? '') }
             });
             const linkedColumns = columnsResponse.data || [];
             
@@ -102,7 +102,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
 
             while (hasMore) {
                 const response = await apiClient.get('/database/rows/table/' + column.link_row_table_id + '/?user_field_names=true&page=' + page + '&size=' + pageSize, {
-                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
+                    headers: { 'X-Baserow-Token-Index': (localStorage.getItem('tok_' + column.link_row_table_id) ?? localStorage.getItem('tok_' + tableId) ?? '') }
                 });
                 const rows = response.data.results || [];
                 allRows = [...allRows, ...rows];
@@ -122,7 +122,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                 }
             }));
         } catch (err) {
-            console.error(`Błąd pobierania danych dla pola ${fieldName}:`, err);
+            console.error('Błąd pobierania danych dla pola ' + fieldName + ':', err);
             setLinkRowData(prev => ({
                 ...prev,
                 [fieldName]: { 
@@ -280,7 +280,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             const response = await apiClient.post('/user-files/upload-file/', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? ''
+                    'X-Baserow-Token-Index': (localStorage.getItem('tok_' + tableId) ?? '')
                 }
             });
             return response.data;
@@ -316,7 +316,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             
             handleFormChange(fieldName, updatedFiles);
         } catch (err) {
-            setError(`Błąd przesyłania plików: ${err.message}`);
+            setError('Błąd przesyłania plików: ' + err.message);
         } finally {
             setUploadingFiles(prev => ({ ...prev, [fieldName]: false }));
         }
@@ -448,13 +448,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             if (editingRow) {
                 // Edycja istniejącego wiersza
                 const response = await apiClient.patch('/database/rows/table/' + tableId + '/' + editingRow.id + '/?user_field_names=true', cleanedData, {
-                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                    headers: { 'X-Baserow-Token-Index': (localStorage.getItem('tok_' + tableId) ?? '') }
                 });
                 onSuccess('updated', response.data);
             } else {
                 // Dodawanie nowego wiersza
                 const response = await apiClient.post('/database/rows/table/' + tableId + '/?user_field_names=true', cleanedData, {
-                    headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
+                    headers: { 'X-Baserow-Token-Index': (localStorage.getItem('tok_' + tableId) ?? '') }
                 });
                 onSuccess('created', response.data);
             }
