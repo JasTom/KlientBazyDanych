@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import apiClient from './apiClient';
-import { Form, Dropdown, ButtonGroup, Button } from 'react-bootstrap';
 
 const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     const [formData, setFormData] = useState(editingRow ? { ...editingRow } : {});
@@ -11,6 +10,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     const [searchTerms, setSearchTerms] = useState({}); // { [fieldName]: string }
     const [selectSearchTerms, setSelectSearchTerms] = useState({}); // { [fieldName]: string } dla multiple_select
     const [uploadingFiles, setUploadingFiles] = useState({}); // { [fieldName]: boolean }
+
+    // Tailwind klasy pomocnicze
+    const inputClass = "w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
+    const selectClass = inputClass;
+    const btnPrimary = "inline-flex items-center rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50";
+    const btnSecondary = "inline-flex items-center rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50";
+    const badgeGray = "inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700";
 
     const formatCellValue = (rawValue) => {
         if (rawValue === null || rawValue === undefined) return "";
@@ -462,23 +468,22 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-            <div className="modal-dialog modal-lg">
-                <div className="modal-content">
-                    <div className="modal-header">
-                        <h5 className="modal-title">
-                            {editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}
-                        </h5>
-                        <button type="button" className="btn-close" onClick={onClose}></button>
-                    </div>
-                    <form onSubmit={handleFormSubmit}>
-                        <div className="modal-body">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-5xl rounded bg-white shadow-lg">
+                <div className="flex items-center justify-between border-b px-4 py-3">
+                    <h5 className="text-lg font-semibold">
+                        {editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}
+                    </h5>
+                    <button type="button" aria-label="Zamknij" className="rounded p-2 text-gray-500 hover:bg-gray-100" onClick={onClose}>×</button>
+                </div>
+                <form onSubmit={handleFormSubmit}>
+                    <div className="px-4 py-3">
                             {error && (
-                                <div className="alert alert-danger" role="alert">
+                                <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
                                     Błąd: {error}
                                 </div>
                             )}
-                            <div className="row g-3">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 {columns.map(column => {
                                     const fieldName = column.name;
                                     const fieldValue = formData[fieldName] || '';
@@ -498,7 +503,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                           fieldType.includes('email') ? 'email' : 
                                                           fieldType.includes('url') ? 'url' : 
                                                           fieldType.includes('phone') ? 'tel' : 'text'}
-                                                    className="form-control"
+                                                    className={inputClass}
                                                     value={fieldValue}
                                                     onChange={(e) => handleFormChange(fieldName, e.target.value)}
                                                     required={column.primary}
@@ -509,7 +514,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {!column.read_only && fieldType.includes('date') && (
                                                 <input
                                                     type={column.date_include_time ? 'datetime-local' : 'date'}
-                                                    className="form-control"
+                                                    className={inputClass}
                                                     value={fieldValue ? new Date(fieldValue).toISOString().slice(0, column.date_include_time ? 16 : 10) : ''}
                                                     onChange={(e) => handleFormChange(fieldName, e.target.value)}
                                                     required={column.primary}
@@ -519,7 +524,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {/* Boolean fields (nie dla read_only) */}
                                             {!column.read_only && fieldType.includes('boolean') && (
                                                 <select
-                                                    className="form-select"
+                                                    className={selectClass}
                                                     value={fieldValue}
                                                     onChange={(e) => handleFormChange(fieldName, e.target.value === 'true')}
                                                     required={column.primary}
@@ -533,7 +538,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {/* Single Select fields (nie dla read_only) */}
                                             {!column.read_only && fieldType === 'single_select' && (
                                                 <select
-                                                    className="form-select"
+                                                    className={selectClass}
                                                     value={getSelectValue(fieldValue, 'single_select')}
                                                     onChange={(e) => handleSelectChange(fieldName, 'single_select', e.target.value, column)}
                                                     required={column.primary}
@@ -550,14 +555,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {/* Multiple Select fields (nie dla read_only) */}
                                             {!column.read_only && fieldType === 'multiple_select' && (
                                                 <div>
-                                                    <div className="position-relative multiple-select-dropdown">
+                                                    <div className="relative multiple-select-dropdown">
                                                         {/* Wyświetlanie wybranych opcji jako tagi */}
                                                         <div 
-                                                            className="border rounded p-2 d-flex flex-wrap align-items-center gap-1" 
+                                                            className="flex flex-wrap items-center gap-1 rounded border p-2" 
                                                             style={{ 
                                                                 minHeight: '38px',
                                                                 cursor: 'pointer',
-                                                                backgroundColor: openDropdowns[fieldName] ? '#f8f9fa' : 'white'
+                                                                backgroundColor: openDropdowns[fieldName] ? '#f3f4f6' : 'white'
                                                             }}
                                                             onClick={() => toggleDropdown(fieldName)}
                                                         >
@@ -583,9 +588,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                 return selectedOptions.map(option => (
                                                                     <span
                                                                         key={option.id}
-                                                                        className="badge d-flex align-items-center gap-1"
+                                                                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
                                                                         style={{ 
-                                                                            fontSize: '0.75rem',
                                                                             backgroundColor: option.color === 'light-gray' ? '#6c757d' : 
                                                                                            option.color === 'light-pink' ? '#e83e8c' : 
                                                                                            option.color === 'brown' ? '#8b4513' : 
@@ -611,18 +615,16 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                         {/* Dropdown z wyszukiwarką */}
                                                         {openDropdowns[fieldName] && (
                                                             <div 
-                                                                className="border rounded mt-1 position-absolute w-100 bg-white" 
+                                                                className="absolute z-50 mt-1 w-full rounded border bg-white shadow" 
                                                                 style={{ 
-                                                                    zIndex: 1000,
-                                                                    maxHeight: '250px',
-                                                                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                                                                    maxHeight: '250px'
                                                                 }}
                                                             >
                                                                 {/* Pole wyszukiwania */}
                                                                 <div className="p-2 border-bottom">
                                                                     <input
                                                                         type="text"
-                                                                        className="form-control form-control-sm"
+                                                                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                                                         placeholder="Szukaj..."
                                                                         value={selectSearchTerms[fieldName] || ''}
                                                                         onChange={(e) => handleSelectSearchChange(fieldName, e.target.value)}
@@ -638,7 +640,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                         
                                                                         if (filteredOptions.length === 0) {
                                                                             return (
-                                                                                <div className="p-2 text-muted text-center">
+                                                                                <div className="p-2 text-center text-gray-500">
                                                                                     {selectSearchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych opcji'}
                                                                                 </div>
                                                                             );
@@ -658,19 +660,18 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             return (
                                                                                 <div
                                                                                     key={option.id}
-                                                                                    className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
-                                                                                    style={{ cursor: 'pointer' }}
+                                                                                    className={`flex cursor-pointer items-center p-2 ${isSelected ? 'bg-gray-100' : ''}`}
                                                                                     onClick={() => toggleOptionSelection(fieldName, option.id)}
                                                                                 >
                                                                                     <input
                                                                                         type="checkbox"
-                                                                                        className="form-check-input me-2"
+                                                                                        className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                         checked={isSelected}
                                                                                         onChange={() => {}} // Obsługiwane przez onClick na div
                                                                                         readOnly
                                                                                     />
                                                                                     <span 
-                                                                                        className="text-truncate"
+                                                                                        className="truncate"
                                                                                         style={{ 
                                                                                             color: option.color === 'light-gray' ? '#6c757d' : 
                                                                                                    option.color === 'light-pink' ? '#e83e8c' : 
@@ -704,21 +705,19 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {!column.read_only && fieldType === 'link_row' && (
                                                 <div>
                                                     {linkRowData[fieldName]?.loading ? (
-                                                        <div className="text-center text-muted p-3">
-                                                            <div className="spinner-border spinner-border-sm me-2" role="status">
-                                                                <span className="visually-hidden">Ładowanie...</span>
-                                                            </div>
+                                                        <div className="p-3 text-center text-gray-500">
+                                                            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent align-middle"></span>
                                                             Ładowanie danych...
                                                         </div>
                                                     ) : (
-                                                        <div className="position-relative link-row-dropdown">
+                                                        <div className="relative link-row-dropdown">
                                                             {/* Wyświetlanie wybranych pozycji */}
                                                             <div 
-                                                                className="border rounded p-2 d-flex flex-wrap align-items-center gap-1" 
+                                                                className="flex flex-wrap items-center gap-1 rounded border p-2" 
                                                                 style={{ 
                                                                     minHeight: '38px',
                                                                     cursor: 'pointer',
-                                                                    backgroundColor: openDropdowns[fieldName] ? '#f8f9fa' : 'white'
+                                                                    backgroundColor: openDropdowns[fieldName] ? '#f3f4f6' : 'white'
                                                                 }}
                                                                 onClick={() => toggleDropdown(fieldName)}
                                                             >
@@ -746,8 +745,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                     return selectedRows.map(row => (
                                                                         <span
                                                                             key={row.id}
-                                                                            className="badge bg-primary d-flex align-items-center gap-1"
-                                                                            style={{ fontSize: '0.75rem' }}
+                                                                            className="inline-flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white"
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 removeSelectedRow(fieldName, row.id);
@@ -767,18 +765,16 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                             {/* Dropdown z wyszukiwarką */}
                                                             {openDropdowns[fieldName] && (
                                                                 <div 
-                                                                    className="border rounded mt-1 position-absolute w-100 bg-white" 
+                                                                    className="absolute z-50 mt-1 w-full rounded border bg-white shadow" 
                                                                     style={{ 
-                                                                        zIndex: 1000,
-                                                                        maxHeight: '250px',
-                                                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                                                                        maxHeight: '250px'
                                                                     }}
                                                                 >
                                                                     {/* Pole wyszukiwania */}
-                                                                    <div className="p-2 border-bottom">
-                                                <input
-                                                    type="text"
-                                                                            className="form-control form-control-sm"
+                                                                    <div className="border-b p-2">
+                                                                        <input
+                                                                            type="text"
+                                                                            className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                                                             placeholder="Szukaj..."
                                                                             value={searchTerms[fieldName] || ''}
                                                                             onChange={(e) => handleSearchChange(fieldName, e.target.value)}
@@ -795,7 +791,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             
                                                                             if (filteredRows.length === 0) {
                                                                                 return (
-                                                                                    <div className="p-2 text-muted text-center">
+                                                                                <div className="p-2 text-center text-gray-500">
                                                                                         {searchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych wierszy'}
                                                                                     </div>
                                                                                 );
@@ -817,8 +813,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             return (
                                                                                 <div
                                                                                     key={row.id}
-                                                                                    className={`p-2 d-flex align-items-center ${isSelected ? 'bg-light' : ''}`}
-                                                                                    style={{ cursor: 'pointer' }}
+                                                                                    className={`flex cursor-pointer items-center p-2 ${isSelected ? 'bg-gray-100' : ''}`}
                                                                                     onClick={() => {
                                                                                         if (allowsMultiple) {
                                                                                             toggleRowSelection(fieldName, row.id);
@@ -832,7 +827,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                     {allowsMultiple ? (
                                                                                         <input
                                                                                             type="checkbox"
-                                                                                            className="form-check-input me-2"
+                                                                                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                             checked={isSelected}
                                                                                             onChange={() => {}} // Obsługiwane przez onClick na div
                                                                                             readOnly
@@ -840,13 +835,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                     ) : (
                                                                                         <input
                                                                                             type="radio"
-                                                                                            className="form-check-input me-2"
+                                                                                            className="mr-2 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                             checked={isSelected}
                                                                                             onChange={() => {}} // Obsługiwane przez onClick na div
                                                                                             readOnly
                                                                                         />
                                                                                     )}
-                                                                                    <span className="text-truncate">{displayText}</span>
+                                                                                    <span className="truncate">{displayText}</span>
                                                                                 </div>
                                                                             );
                                                                         });
@@ -873,19 +868,19 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                     {/* Wyświetlanie wybranych plików */}
                                                     {fieldValue && Array.isArray(fieldValue) && fieldValue.length > 0 && (
                                                         <div className="mb-3">
-                                                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                                                <label className="form-label mb-0">Wybrane pliki ({fieldValue.length}):</label>
+                                                            <div className="mb-2 flex items-center justify-between">
+                                                                <label className="mb-0 text-sm font-medium">Wybrane pliki ({fieldValue.length}):</label>
                                                                 <button
                                                                     type="button"
-                                                                    className="btn btn-sm btn-outline-danger"
+                                                                    className="inline-flex items-center rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
                                                                     onClick={() => handleFormChange(fieldName, [])}
                                                                 >
                                                                     Usuń wszystkie
                                                                 </button>
                                                             </div>
-                                                            <div className="d-flex flex-wrap gap-2">
+                                                            <div className="flex flex-wrap gap-2">
                                                                 {fieldValue.map((file, index) => (
-                                                                    <div key={index} className="d-flex align-items-center gap-2 border rounded p-2">
+                                                                    <div key={index} className="flex items-center gap-2 rounded border p-2">
                                                                         {file.thumbnails?.small?.url ? (
                                                                             <img
                                                                                 src={file.thumbnails.small.url}
@@ -894,14 +889,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             />
                                                                         ) : (
                                                                             <div 
-                                                                                className="d-flex align-items-center justify-content-center bg-light"
+                                                                                className="flex items-center justify-center bg-gray-100"
                                                                                 style={{ width: 32, height: 32, borderRadius: 4 }}
                                                                             >
                                                                                 📄
                                                                             </div>
                                                                         )}
-                                                                        <div className="flex-grow-1">
-                                                                            <div className="fw-bold" style={{ fontSize: '0.875rem' }}>
+                                                                        <div className="flex-grow">
+                                                                            <div className="text-sm font-semibold">
                                                                                 {file.visible_name || file.name}
                                                                             </div>
                                                                             {file.url && (
@@ -909,8 +904,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                     href={file.url} 
                                                                                     target="_blank" 
                                                                                     rel="noopener noreferrer"
-                                                                                    className="text-decoration-none"
-                                                                                    style={{ fontSize: '0.75rem' }}
+                                                                                    className="text-xs text-blue-600 hover:underline"
                                                                                 >
                                                                                     Pobierz
                                                                                 </a>
@@ -918,7 +912,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                         </div>
                                                                         <button
                                                                             type="button"
-                                                                            className="btn btn-sm btn-outline-danger"
+                                                                            className="inline-flex items-center rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
                                                                             onClick={() => {
                                                                                 const newFiles = fieldValue.filter((_, i) => i !== index);
                                                                                 handleFormChange(fieldName, newFiles);
@@ -935,7 +929,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                     {/* Pole wyboru plików */}
                                                 <input
                                                     type="file"
-                                                    className="form-control"
+                                                    className={inputClass}
                                                         multiple
                                                         onChange={(e) => handleFileChange(fieldName, e.target.files)}
                                                     required={column.primary}
@@ -944,11 +938,9 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                     
                                                     {/* Wskaźnik ładowania */}
                                                     {uploadingFiles[fieldName] && (
-                                                        <div className="mt-2 d-flex align-items-center">
-                                                            <div className="spinner-border spinner-border-sm me-2" role="status">
-                                                                <span className="visually-hidden">Przesyłanie...</span>
-                                                            </div>
-                                                            <span>Przesyłanie plików...</span>
+                                                        <div className="mt-2 flex items-center text-sm text-gray-600">
+                                                            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent"></span>
+                                                            Przesyłanie plików...
                                                         </div>
                                                     )}
                                                 </div>
@@ -957,7 +949,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {/* Long text fields (nie dla read_only) */}
                                             {fieldType.includes('long_text') && !column.read_only && (
                                                 <textarea
-                                                    className="form-control"
+                                                    className={inputClass}
                                                     rows={3}
                                                     value={fieldValue}
                                                     onChange={(e) => handleFormChange(fieldName, e.target.value)}
@@ -969,7 +961,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                             {(column.read_only || fieldType.includes('auto_number')) && (
                                                 fieldType.includes('long_text') ? (
                                                     <textarea
-                                                        className="form-control"
+                                                        className={inputClass}
                                                         rows={3}
                                                         value={formatCellValue(fieldValue)}
                                                         disabled
@@ -977,7 +969,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                 ) : (
                                                     <input
                                                         type="text"
-                                                        className="form-control"
+                                                        className={inputClass}
                                                         value={formatCellValue(fieldValue)}
                                                         disabled
                                                     />
@@ -988,11 +980,11 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                 })}
                             </div>
                         </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                            <button type="button" className={btnSecondary} onClick={onClose} disabled={loading}>
                                 Anuluj
                             </button>
-                            <button type="submit" className="btn btn-primary" disabled={loading}>
+                            <button type="submit" className={btnPrimary} disabled={loading}>
                                 {loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}
                             </button>
                         </div>

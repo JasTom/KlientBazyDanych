@@ -102,14 +102,14 @@ function TableList() {
         }, {})
     );
 
-    // Prosta paleta i emoji per baza (deterministycznie po ID)
+    // Prosta paleta i emoji per baza (deterministycznie po ID) — Tailwind
     const palette = [
-        { bg: "text-bg-primary", emoji: "📘" },
-        { bg: "text-bg-success", emoji: "📗" },
-        { bg: "text-bg-warning", emoji: "📒" },
-        { bg: "text-bg-info", emoji: "📙" },
-        { bg: "text-bg-secondary", emoji: "📕" },
-        { bg: "text-bg-danger", emoji: "📓" }
+        { bg: "bg-blue-600 text-white", emoji: "📘" },
+        { bg: "bg-green-600 text-white", emoji: "📗" },
+        { bg: "bg-yellow-500 text-black", emoji: "📒" },
+        { bg: "bg-cyan-500 text-white", emoji: "📙" },
+        { bg: "bg-gray-600 text-white", emoji: "📕" },
+        { bg: "bg-red-600 text-white", emoji: "📓" }
     ];
     const getDbMeta = (dbId) => {
         const idx = Math.abs(String(dbId).split("").reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % palette.length;
@@ -117,22 +117,21 @@ function TableList() {
     };
 
     return (
-        <div className="container py-3" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
-            <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
-                <h1 className="h4 m-0">Lista tabel</h1>
-                <div className="d-flex w-100 w-md-auto gap-2">
+        <div className="mx-auto max-w-7xl px-4 py-3" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 140px)' }}>
+            <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <h1 className="m-0 text-xl font-semibold">Lista tabel</h1>
+                <div className="flex w-full gap-2 md:w-auto">
                     <input
                         type="text"
-                        className="form-control"
+                        className="w-full max-w-[360px] rounded border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder="Szukaj tabeli..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        style={{ maxWidth: 360 }}
                     />
-                    <div className="btn-group" role="group" aria-label="Widok">
+                    <div className="inline-flex overflow-hidden rounded border border-blue-600">
                         <button
                             type="button"
-                            className={`btn btn-sm ${viewMode === "grid" ? "btn-primary" : "btn-outline-primary"}`}
+                            className={`${viewMode === "grid" ? "bg-blue-600 text-white" : "bg-white text-blue-600"} px-3 py-2 text-sm`}
                             onClick={() => setViewMode("grid")}
                             title="Widok siatki"
                         >
@@ -140,7 +139,7 @@ function TableList() {
                         </button>
                         <button
                             type="button"
-                            className={`btn btn-sm ${viewMode === "list" ? "btn-primary" : "btn-outline-primary"}`}
+                            className={`${viewMode === "list" ? "bg-blue-600 text-white" : "bg-white text-blue-600"} border-l border-blue-600 px-3 py-2 text-sm`}
                             onClick={() => setViewMode("list")}
                             title="Widok listy"
                         >
@@ -151,40 +150,40 @@ function TableList() {
             </div>
 
             {grouped.length === 0 && (
-                <div className="text-muted">Brak wyników.</div>
+                <div className="text-gray-500">Brak wyników.</div>
             )}
 
             {grouped.map(([databaseId, tablesForDb]) => (
                 <section key={databaseId} className="mb-4">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className={`badge ${getDbMeta(databaseId).bg}`} style={{ fontSize: ".9rem" }}>
+                    <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${getDbMeta(databaseId).bg}`}>
                                 {getDbMeta(databaseId).emoji}
                             </span>
-                            <h2 className="h6 m-0">Baza: {dbNames[databaseId] || `ID ${databaseId}`}</h2>
+                            <h2 className="m-0 text-sm font-semibold">Baza: {dbNames[databaseId] || `ID ${databaseId}`}</h2>
                         </div>
-                        <span className="badge text-bg-light">{tablesForDb.length}</span>
+                        <span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{tablesForDb.length}</span>
                     </div>
                     {viewMode === "grid" ? (
-                        <div className="row g-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                             {tablesForDb.map(table => (
-                                <div key={table.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+                                <div key={table.id}>
                                     <TableTile name={table.name} id={table.id} />
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="list-group">
+                        <div className="divide-y overflow-hidden rounded border">
                             {tablesForDb.map(table => (
                                 <button
                                     key={table.id}
                                     type="button"
-                                    className="list-group-item list-group-item-action d-flex align-items-center justify-content-between"
+                                    className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-50"
                                     onClick={() => navigate(`/tabela-baserow/${table.id}/${table.name}`)}
                                     title={table.name}
                                 >
-                                    <span className="text-truncate" style={{ maxWidth: "80%" }}>{table.name}</span>
-                                    <span className="badge text-bg-secondary">ID {table.id}</span>
+                                    <span className="max-w-[80%] truncate">{table.name}</span>
+                                    <span className="inline-flex items-center rounded bg-gray-600 px-2 py-0.5 text-xs text-white">ID {table.id}</span>
                                 </button>
                             ))}
                         </div>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card } from 'react-bootstrap'
 
 function TableTile(props) {
     const navigate = useNavigate();
@@ -10,30 +9,26 @@ function TableTile(props) {
     }
 
     return (
-        <Card 
-            className="shadow-sm h-100 border-0" 
+        <div
+            className="h-full cursor-pointer rounded border border-gray-200 bg-white shadow-sm transition-transform duration-100 ease-out hover:-translate-y-0.5 hover:shadow"
             role="button"
             onClick={() => handleClick(props.id, props.name)}
-            style={{ transition: 'transform .08s ease, box-shadow .08s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.classList.add('shadow'); }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.classList.remove('shadow'); }}
         >
-            <Card.Body className="d-flex flex-column">
-
-                <Card.Title className="fs-6 text-truncate" title={props.name}>
+            <div className="flex h-full flex-col p-4">
+                <div className="truncate text-sm font-semibold" title={props.name}>
                     {props.name}
-                </Card.Title>
-                <div className="mt-auto d-flex justify-content-end">
-                    <Button 
-                        variant="outline-primary" 
-                        size="sm"
+                </div>
+                <div className="mt-auto flex justify-end">
+                    <button
+                        type="button"
+                        className="inline-flex items-center rounded border border-blue-600 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50"
                         onClick={(e) => { e.stopPropagation(); handleClick(props.id, props.name); }}
                     >
                         Przejdź
-                    </Button>
+                    </button>
                 </div>
-            </Card.Body>
-        </Card>
+            </div>
+        </div>
     );
 }
 export default TableTile
