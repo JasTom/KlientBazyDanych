@@ -478,518 +478,221 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                 </div>
                 <form onSubmit={handleFormSubmit}>
                     <div className="px-4 py-3">
-                            {error && (
-                                <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-                                    Błąd: {error}
-                                </div>
-                            )}
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                {columns.map(column => {
-                                    const fieldName = column.name;
-                                    const fieldValue = formData[fieldName] || '';
-                                    const fieldType = String(column.type || '').toLowerCase();
-                                    
-                                    return (
-                                        <div key={column.id} className="col-md-6">
-                                            <label className="form-label">
-                                                {column.name}
-                                                {column.primary && <span className="text-danger ms-1">*</span>}
-                                            </label>
-                                            
-                                            {/* Text/Number fields (bez long_text i auto_number, i nie dla read_only) */}
-                                            {!column.read_only && !fieldType.includes('long_text') && !fieldType.includes('auto_number') && (fieldType === 'text' || fieldType === 'number' || fieldType.includes('url') || fieldType.includes('email') || fieldType.includes('phone')) && (
-                                                <input
-                                                    type={fieldType.includes('number') ? 'number' : 
-                                                          fieldType.includes('email') ? 'email' : 
-                                                          fieldType.includes('url') ? 'url' : 
-                                                          fieldType.includes('phone') ? 'tel' : 'text'}
-                                                    className={inputClass}
-                                                    value={fieldValue}
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.value)}
-                                                    required={column.primary}
-                                                />
-                                            )}
-                                            
-                                            {/* Date fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType.includes('date') && (
-                                                <input
-                                                    type={column.date_include_time ? 'datetime-local' : 'date'}
-                                                    className={inputClass}
-                                                    value={fieldValue ? new Date(fieldValue).toISOString().slice(0, column.date_include_time ? 16 : 10) : ''}
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.value)}
-                                                    required={column.primary}
-                                                />
-                                            )}
-                                            
-                                            {/* Boolean fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType.includes('boolean') && (
+                        {error && (
+                            <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                                Błąd: {error}
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                            {columns.map((column) => {
+                                const fieldName = column.name;
+                                const fieldValue = formData[fieldName] || '';
+                                const fieldType = String(column.type || '').toLowerCase();
+
+                                const isBasicText = !column.read_only && !fieldType.includes('long_text') && !fieldType.includes('auto_number') && (
+                                    fieldType === 'text' || fieldType === 'number' || fieldType.includes('url') || fieldType.includes('email') || fieldType.includes('phone')
+                                );
+
+                                const isDate = !column.read_only && fieldType.includes('date');
+                                const isBoolean = !column.read_only && fieldType.includes('boolean');
+                                const isSingleSelect = !column.read_only && fieldType === 'single_select';
+                                const isMultipleSelect = !column.read_only && fieldType === 'multiple_select';
+                                const isLinkRow = !column.read_only && fieldType === 'link_row';
+                                const isFile = !column.read_only && fieldType.includes('file');
+                                const isLongText = fieldType.includes('long_text') && !column.read_only;
+                                const isReadonly = (column.read_only || fieldType.includes('auto_number'));
+
+                                return (
+                                    <div key={column.id}>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                            {column.name}
+                                            {column.primary && <span className="ml-1 text-red-600">*</span>}
+                                        </label>
+
+                                        {isBasicText && (
+                                            <input
+                                                type={fieldType.includes('number') ? 'number' : fieldType.includes('email') ? 'email' : fieldType.includes('url') ? 'url' : fieldType.includes('phone') ? 'tel' : 'text'}
+                                                className={inputClass}
+                                                value={fieldValue}
+                                                onChange={(e) => handleFormChange(fieldName, e.target.value)}
+                                                required={column.primary}
+                                            />
+                                        )}
+
+                                        {isDate && (
+                                            <input
+                                                type={column.date_include_time ? 'datetime-local' : 'date'}
+                                                className={inputClass}
+                                                value={fieldValue ? new Date(fieldValue).toISOString().slice(0, column.date_include_time ? 16 : 10) : ''}
+                                                onChange={(e) => handleFormChange(fieldName, e.target.value)}
+                                                required={column.primary}
+                                            />
+                                        )}
+
+                                        {isBoolean && (
+                                            <select
+                                                className={selectClass}
+                                                value={fieldValue}
+                                                onChange={(e) => handleFormChange(fieldName, e.target.value === 'true')}
+                                                required={column.primary}
+                                            >
+                                                <option value="">Wybierz...</option>
+                                                <option value="true">Tak</option>
+                                                <option value="false">Nie</option>
+                                            </select>
+                                        )}
+
+                                        {isSingleSelect && (
+                                            <select
+                                                className={selectClass}
+                                                value={getSelectValue(fieldValue, 'single_select')}
+                                                onChange={(e) => handleSelectChange(fieldName, 'single_select', e.target.value, column)}
+                                                required={column.primary}
+                                            >
+                                                <option value="">Wybierz opcję...</option>
+                                                {(column.select_options || []).map((option) => (
+                                                    <option key={option.id} value={option.id}>{option.value}</option>
+                                                ))}
+                                            </select>
+                                        )}
+
+                                        {isMultipleSelect && (
+                                            <div>
                                                 <select
+                                                    multiple
                                                     className={selectClass}
-                                                    value={fieldValue}
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.value === 'true')}
+                                                    value={(Array.isArray(fieldValue) ? fieldValue : []).map((v) => {
+                                                        if (typeof v === 'object' && v !== null && v.id) return String(v.id);
+                                                        return String(v);
+                                                    })}
+                                                    onChange={(e) => {
+                                                        const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                                                        handleSelectChange(fieldName, 'multiple_select', selected, column);
+                                                    }}
                                                     required={column.primary}
                                                 >
-                                                    <option value="">Wybierz...</option>
-                                                    <option value="true">Tak</option>
-                                                    <option value="false">Nie</option>
-                                                </select>
-                                            )}
-                                            
-                                            {/* Single Select fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType === 'single_select' && (
-                                                <select
-                                                    className={selectClass}
-                                                    value={getSelectValue(fieldValue, 'single_select')}
-                                                    onChange={(e) => handleSelectChange(fieldName, 'single_select', e.target.value, column)}
-                                                    required={column.primary}
-                                                >
-                                                    <option value="">Wybierz opcję...</option>
-                                                    {column.select_options && column.select_options.map(option => (
+                                                    {(column.select_options || []).map((option) => (
                                                         <option key={option.id} value={option.id}>
                                                             {option.value}
                                                         </option>
                                                     ))}
                                                 </select>
-                                            )}
-                                            
-                                            {/* Multiple Select fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType === 'multiple_select' && (
-                                                <div>
-                                                    <div className="relative multiple-select-dropdown">
-                                                        {/* Wyświetlanie wybranych opcji jako tagi */}
-                                                        <div 
-                                                            className="flex flex-wrap items-center gap-1 rounded border p-2" 
-                                                            style={{ 
-                                                                minHeight: '38px',
-                                                                cursor: 'pointer',
-                                                                backgroundColor: openDropdowns[fieldName] ? '#f3f4f6' : 'white'
-                                                            }}
-                                                            onClick={() => toggleDropdown(fieldName)}
-                                                        >
-                                                            {(() => {
-                                                                const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
-                                                                // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
-                                                                const ids = selectedIds.map(item => {
-                                                                    if (typeof item === 'object' && item !== null && item.id) {
-                                                                        return item.id;
-                                                                    }
-                                                                    return item;
-                                                                });
-                                                                const selectedOptions = (column.select_options || []).filter(option => ids.includes(option.id));
-                                                                
-                                                                if (selectedOptions.length === 0) {
-                                                                    return (
-                                                                        <span className="text-muted">
-                                                                            Wybierz opcje...
-                                                                        </span>
-                                                                    );
-                                                                }
-                                                                
-                                                                return selectedOptions.map(option => (
-                                                                    <span
-                                                                        key={option.id}
-                                                                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-white"
-                                                                        style={{ 
-                                                                            backgroundColor: option.color === 'light-gray' ? '#6c757d' : 
-                                                                                           option.color === 'light-pink' ? '#e83e8c' : 
-                                                                                           option.color === 'brown' ? '#8b4513' : 
-                                                                                           option.color === 'darker-cyan' ? '#20c997' : 
-                                                                                           option.color === 'light-green' ? '#28a745' : '#0d6efd'
-                                                                        }}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            removeSelectedOption(fieldName, option.id);
-                                                                        }}
-                                                                    >
-                                                                        {option.value}
-                                                                        <span style={{ cursor: 'pointer' }}>×</span>
-                                                                    </span>
-                                                                ));
-                                                            })()}
-                                                            
-                                                            <span className="ms-auto text-muted">
-                                                                {openDropdowns[fieldName] ? '▲' : '▼'}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        {/* Dropdown z wyszukiwarką */}
-                                                        {openDropdowns[fieldName] && (
-                                                            <div 
-                                                                className="absolute z-50 mt-1 w-full rounded border bg-white shadow" 
-                                                                style={{ 
-                                                                    maxHeight: '250px'
-                                                                }}
-                                                            >
-                                                                {/* Pole wyszukiwania */}
-                                                                <div className="p-2 border-bottom">
-                                                                    <input
-                                                                        type="text"
-                                                                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                                                        placeholder="Szukaj..."
-                                                                        value={selectSearchTerms[fieldName] || ''}
-                                                                        onChange={(e) => handleSelectSearchChange(fieldName, e.target.value)}
-                                                                        autoFocus
-                                                                    />
-                                                                </div>
-                                                                
-                                                                {/* Lista opcji */}
-                                                                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                                                    {(() => {
-                                                                        const allOptions = column.select_options || [];
-                                                                        const filteredOptions = getFilteredSelectOptions(fieldName, allOptions);
-                                                                        
-                                                                        if (filteredOptions.length === 0) {
-                                                                            return (
-                                                                                <div className="p-2 text-center text-gray-500">
-                                                                                    {selectSearchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych opcji'}
-                                                                                </div>
-                                                                            );
-                                                                        }
-                                                                        
-                                                                        return filteredOptions.map(option => {
-                                                                            // Sprawdź czy opcja jest wybrana, uwzględniając obiekty z API
-                                                                            const selectedIds = Array.isArray(fieldValue) ? fieldValue : [];
-                                                                            const ids = selectedIds.map(item => {
-                                                                                if (typeof item === 'object' && item !== null && item.id) {
-                                                                                    return item.id;
-                                                                                }
-                                                                                return item;
-                                                                            });
-                                                                            const isSelected = ids.includes(option.id);
-                                                                            
-                                                                            return (
-                                                                                <div
-                                                                                    key={option.id}
-                                                                                    className={"flex cursor-pointer items-center p-2 " + (isSelected ? 'bg-gray-100' : '')}
-                                                                                    onClick={() => toggleOptionSelection(fieldName, option.id)}
-                                                                                >
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                                        checked={isSelected}
-                                                                                        onChange={() => {}}
-                                                                                        readOnly
-                                                                                    />
-                                                                                    <span 
-                                                                                        className="truncate"
-                                                                                        style={{ 
-                                                                                            color: option.color === 'light-gray' ? '#6c757d' : 
-                                                                                                   option.color === 'light-pink' ? '#e83e8c' : 
-                                                                                                   option.color === 'brown' ? '#8b4513' : 
-                                                                                                   option.color === 'darker-cyan' ? '#20c997' : 
-                                                                                                   option.color === 'light-green' ? '#28a745' : 'inherit'
-                                                                                        }}
-                                                                                    >
-                                                                                        {option.value}
-                                                                                    </span>
-                                                                                </div>
-                                                                            );
-                                                                        });
-                                                                    })()}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    {column.primary && (
-                                                        <input 
-                                                            type="hidden" 
-                                                            value={Array.isArray(fieldValue) && fieldValue.length > 0 ? 'selected' : ''} 
-                                                            required 
-                                                        />
-                                                    )}
-                                                </div>
-                                            )}
-                                            
-                                            {/* Link Row fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType === 'link_row' && (
-                                                <div>
-                                                    {linkRowData[fieldName]?.loading ? (
-                                                        <div className="p-3 text-center text-gray-500">
-                                                            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent align-middle"></span>
-                                                            Ładowanie danych...
-                                                        </div>
-                                                    ) : (
-                                                        <div className="relative link-row-dropdown">
-                                                            {/* Wyświetlanie wybranych pozycji */}
-                                                            <div 
-                                                                className="flex flex-wrap items-center gap-1 rounded border p-2" 
-                                                                style={{ 
-                                                                    minHeight: '38px',
-                                                                    cursor: 'pointer',
-                                                                    backgroundColor: openDropdowns[fieldName] ? '#f3f4f6' : 'white'
-                                                                }}
-                                                                onClick={() => toggleDropdown(fieldName)}
-                                                            >
-                                                                {(() => {
-                                                                    const selectedIds = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
-                                                                    // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
-                                                                    const ids = selectedIds.map(item => {
-                                                                        if (typeof item === 'object' && item !== null && item.id) {
-                                                                            return item.id;
-                                                                        }
-                                                                        return item;
-                                                                    });
-                                                                    const selectedRows = (linkRowData[fieldName]?.rows || []).filter(row => ids.includes(row.id));
-                                                                    const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
-                                                                    const allowsMultiple = column.link_row_multiple_relationships !== false;
-                                                                    
-                                                                    if (selectedRows.length === 0) {
-                                                                        return (
-                                                                            <span className="text-muted">
-                                                                                {allowsMultiple ? 'Wybierz opcje...' : 'Wybierz opcję...'}
-                                                                            </span>
-                                                                        );
-                                                                    }
-                                                                    
-                                                                    return selectedRows.map(row => (
-                                                                        <span
-                                                                            key={row.id}
-                                                                            className="inline-flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                removeSelectedRow(fieldName, row.id);
-                                                                            }}
-                                                                        >
-                                                                            {row[primaryFieldName] || ('ID: ' + row.id)}
-                                                                            {allowsMultiple && <span style={{ cursor: 'pointer' }}>×</span>}
-                                                                        </span>
-                                                                    ));
-                                                                })()}
-                                                                
-                                                                <span className="ms-auto text-muted">
-                                                                    {openDropdowns[fieldName] ? '▲' : '▼'}
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            {/* Dropdown z wyszukiwarką */}
-                                                            {openDropdowns[fieldName] && (
-                                                                <div 
-                                                                    className="absolute z-50 mt-1 w-full rounded border bg-white shadow" 
-                                                                    style={{ 
-                                                                        maxHeight: '250px'
+                                            </div>
+                                        )}
+
+                                        {isLinkRow && (
+                                            <div>
+                                                {linkRowData[fieldName]?.loading ? (
+                                                    <div className="p-2 text-sm text-gray-500">Ładowanie danych...</div>
+                                                ) : (
+                                                    (() => {
+                                                        const rows = linkRowData[fieldName]?.rows || [];
+                                                        const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
+                                                        const allowsMultiple = column.link_row_multiple_relationships !== false;
+
+                                                        if (rows.length === 0) {
+                                                            return <div className="text-sm text-gray-500">Brak dostępnych wierszy</div>;
+                                                        }
+
+                                                        if (allowsMultiple) {
+                                                            const valueIds = Array.isArray(fieldValue)
+                                                                ? fieldValue.map((v) => (typeof v === 'object' && v !== null && v.id ? String(v.id) : String(v)))
+                                                                : [];
+                                                            return (
+                                                                <select
+                                                                    multiple
+                                                                    className={selectClass}
+                                                                    value={valueIds}
+                                                                    onChange={(e) => {
+                                                                        const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                                                                        handleLinkRowChange(fieldName, 'link_row', selected, column);
                                                                     }}
+                                                                    required={column.primary}
                                                                 >
-                                                                    {/* Pole wyszukiwania */}
-                                                                    <div className="border-b p-2">
-                                                                        <input
-                                                                            type="text"
-                                                                            className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                                                            placeholder="Szukaj..."
-                                                                            value={searchTerms[fieldName] || ''}
-                                                                            onChange={(e) => handleSearchChange(fieldName, e.target.value)}
-                                                                            autoFocus
-                                                                        />
-                                                                    </div>
-                                                                    
-                                                                    {/* Lista opcji */}
-                                                                    <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                                                                        {(() => {
-                                                                            const allRows = linkRowData[fieldName]?.rows || [];
-                                                                            const filteredRows = getFilteredRows(fieldName, allRows);
-                                                                            const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
-                                                                            
-                                                                            if (filteredRows.length === 0) {
-                                                                                return (
-                                                                                <div className="p-2 text-center text-gray-500">
-                                                                                        {searchTerms[fieldName] ? 'Brak wyników wyszukiwania' : 'Brak dostępnych wierszy'}
-                                                                                    </div>
-                                                                                );
-                                                                            }
-                                                                            
-                                                                        return filteredRows.map(row => {
-                                                                            const currentValue = Array.isArray(fieldValue) ? fieldValue : (fieldValue ? [fieldValue] : []);
-                                                                            // Wyciągnij ID z obiektów lub użyj bezpośrednio ID
-                                                                            const ids = currentValue.map(item => {
-                                                                                if (typeof item === 'object' && item !== null && item.id) {
-                                                                                    return item.id;
-                                                                                }
-                                                                                return item;
-                                                                            });
-                                                                            const isSelected = ids.includes(row.id);
-                                                                            const displayText = row[primaryFieldName] || ('ID: ' + row.id);
-                                                                            const allowsMultiple = column.link_row_multiple_relationships !== false;
-                                                                            
-                                                                            return (
-                                                                                <div
-                                                                                    key={row.id}
-                                                                                    className={"flex cursor-pointer items-center p-2 " + (isSelected ? 'bg-gray-100' : '')}
-                                                                                    onClick={() => {
-                                                                                        if (allowsMultiple) {
-                                                                                            toggleRowSelection(fieldName, row.id);
-                                                                                        } else {
-                                                                                            // Pojedyncza relacja - zastąp aktualny wybór
-                                                                                            handleFormChange(fieldName, row.id);
-                                                                                            setOpenDropdowns(prev => ({ ...prev, [fieldName]: false }));
-                                                                                        }
-                                                                                    }}
-                                                                                >
-                                                                                    {allowsMultiple ? (
-                                                                                        <input
-                                                                                            type="checkbox"
-                                                                                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                                            checked={isSelected}
-                                                                                            onChange={() => {}}
-                                                                                            readOnly
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <input
-                                                                                            type="radio"
-                                                                                            className="mr-2 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                                                            checked={isSelected}
-                                                                                            onChange={() => {}}
-                                                                                            readOnly
-                                                                                        />
-                                                                                    )}
-                                                                                    <span className="truncate">{displayText}</span>
-                                                                                </div>
-                                                                            );
-                                                                        });
-                                                                        })()}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {column.primary && (
-                                                        <input 
-                                                            type="hidden" 
-                                                            value={Array.isArray(fieldValue) && fieldValue.length > 0 ? 'selected' : ''} 
-                                                            required 
-                                                        />
-                                                    )}
-                                                </div>
-                                            )}
-                                            
-                                            {/* File fields (nie dla read_only) */}
-                                            {!column.read_only && fieldType.includes('file') && (
-                                                <div>
-                                                    {/* Wyświetlanie wybranych plików */}
-                                                    {fieldValue && Array.isArray(fieldValue) && fieldValue.length > 0 && (
-                                                        <div className="mb-3">
-                                                            <div className="mb-2 flex items-center justify-between">
-                                                                <label className="mb-0 text-sm font-medium">Wybrane pliki ({fieldValue.length}):</label>
-                                                                <button
-                                                                    type="button"
-                                                                    className="inline-flex items-center rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                                                                    onClick={() => handleFormChange(fieldName, [])}
-                                                                >
-                                                                    Usuń wszystkie
-                                                                </button>
-                                                            </div>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {fieldValue.map((file, index) => (
-                                                                    <div key={index} className="flex items-center gap-2 rounded border p-2">
-                                                                        {file.thumbnails?.small?.url ? (
-                                                                            <img
-                                                                                src={file.thumbnails.small.url}
-                                                                                alt={file.name}
-                                                                                style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }}
-                                                                            />
-                                                                        ) : (
-                                                                            <div 
-                                                                                className="flex items-center justify-center bg-gray-100"
-                                                                                style={{ width: 32, height: 32, borderRadius: 4 }}
-                                                                            >
-                                                                                📄
-                                                                            </div>
-                                                                        )}
-                                                                        <div className="flex-grow">
-                                                                            <div className="text-sm font-semibold">
-                                                                                {file.visible_name || file.name}
-                                                                            </div>
-                                                                            {file.url && (
-                                                                                <a 
-                                                                                    href={file.url} 
-                                                                                    target="_blank" 
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="text-xs text-blue-600 hover:underline"
-                                                                                >
-                                                                                    Pobierz
-                                                                                </a>
-                                                                            )}
-                                                                        </div>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="inline-flex items-center rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                                                                            onClick={() => {
-                                                                                const newFiles = fieldValue.filter((_, i) => i !== index);
-                                                                                handleFormChange(fieldName, newFiles);
-                                                                            }}
-                                                                        >
-                                                                            ×
-                                                                        </button>
-                                                                    </div>
+                                                                    {rows.map((r) => (
+                                                                        <option key={r.id} value={r.id}>
+                                                                            {r[primaryFieldName] || 'ID: ' + r.id}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            );
+                                                        }
+
+                                                        const singleValue = (Array.isArray(fieldValue) ? fieldValue[0] : fieldValue);
+                                                        const singleId = singleValue && typeof singleValue === 'object' && singleValue.id ? String(singleValue.id) : (singleValue ? String(singleValue) : '');
+                                                        return (
+                                                            <select
+                                                                className={selectClass}
+                                                                value={singleId}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    handleFormChange(fieldName, val ? parseInt(val) : null);
+                                                                }}
+                                                                required={column.primary}
+                                                            >
+                                                                <option value="">Wybierz opcję...</option>
+                                                                {rows.map((r) => (
+                                                                    <option key={r.id} value={r.id}>
+                                                                        {r[primaryFieldName] || 'ID: ' + r.id}
+                                                                    </option>
                                                                 ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* Pole wyboru plików */}
+                                                            </select>
+                                                        );
+                                                    })()
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {isFile && (
+                                            <div>
                                                 <input
                                                     type="file"
                                                     className={inputClass}
-                                                        multiple
-                                                        onChange={(e) => handleFileChange(fieldName, e.target.files)}
+                                                    multiple
+                                                    onChange={(e) => handleFileChange(fieldName, e.target.files)}
                                                     required={column.primary}
-                                                        disabled={uploadingFiles[fieldName]}
-                                                    />
-                                                    
-                                                    {/* Wskaźnik ładowania */}
-                                                    {uploadingFiles[fieldName] && (
-                                                        <div className="mt-2 flex items-center text-sm text-gray-600">
-                                                            <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent"></span>
-                                                            Przesyłanie plików...
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            
-                                            {/* Long text fields (nie dla read_only) */}
-                                            {fieldType.includes('long_text') && !column.read_only && (
-                                                <textarea
-                                                    className={inputClass}
-                                                    rows={3}
-                                                    value={fieldValue}
-                                                    onChange={(e) => handleFormChange(fieldName, e.target.value)}
-                                                    required={column.primary}
+                                                    disabled={uploadingFiles[fieldName]}
                                                 />
-                                            )}
-                                            
-                                            {/* Read-only fields i auto_number (jako tylko do odczytu) */}
-                                            {(column.read_only || fieldType.includes('auto_number')) && (
-                                                fieldType.includes('long_text') ? (
-                                                    <textarea
-                                                        className={inputClass}
-                                                        rows={3}
-                                                        value={formatCellValue(fieldValue)}
-                                                        disabled
-                                                    />
-                                                ) : (
-                                                    <input
-                                                        type="text"
-                                                        className={inputClass}
-                                                        value={formatCellValue(fieldValue)}
-                                                        disabled
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                                {uploadingFiles[fieldName] && (
+                                                    <div className="mt-2 flex items-center text-sm text-gray-600">
+                                                        <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent"></span>
+                                                        Przesyłanie plików...
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {isLongText && (
+                                            <textarea
+                                                className={inputClass}
+                                                rows={3}
+                                                value={fieldValue}
+                                                onChange={(e) => handleFormChange(fieldName, e.target.value)}
+                                                required={column.primary}
+                                            />
+                                        )}
+
+                                        {isReadonly && (
+                                            fieldType.includes('long_text') ? (
+                                                <textarea className={inputClass} rows={3} value={formatCellValue(fieldValue)} disabled />
+                                            ) : (
+                                                <input type="text" className={inputClass} value={formatCellValue(fieldValue)} disabled />
+                                            )
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
-                            <button type="button" className={btnSecondary} onClick={onClose} disabled={loading}>
-                                Anuluj
-                            </button>
-                            <button type="submit" className={btnPrimary} disabled={loading}>
-                                {loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                        <button type="button" className={btnSecondary} onClick={onClose} disabled={loading}>
+                            Anuluj
+                        </button>
+                        <button type="submit" className={btnPrimary} disabled={loading}>
+                            {loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     );
