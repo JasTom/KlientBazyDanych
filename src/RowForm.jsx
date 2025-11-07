@@ -468,16 +468,17 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="w-full max-w-5xl rounded bg-white shadow-lg">
-                <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
+            <div className="flex min-h-full items-center justify-center p-4">
+                <div className="flex w-full max-w-5xl max-h-[calc(100vh-2rem)] flex-col rounded bg-white shadow-lg">
+                    <div className="flex items-center justify-between border-b px-4 py-3">
                     <h5 className="text-lg font-semibold">
                         {editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}
                     </h5>
                     <button type="button" aria-label="Zamknij" className="rounded p-2 text-gray-500 hover:bg-gray-100" onClick={onClose}>×</button>
-                </div>
-                <form onSubmit={handleFormSubmit}>
-                    <div className="px-4 py-3">
+                    </div>
+                    <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col">
+                        <div className="flex-1 overflow-y-auto px-4 py-3">
                         {error && (
                             <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
                                 Błąd: {error}
@@ -683,16 +684,17 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                 );
                             })}
                         </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
                         <button type="button" className={btnSecondary} onClick={onClose} disabled={loading}>
                             Anuluj
                         </button>
                         <button type="submit" className={btnPrimary} disabled={loading}>
                             {loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}
                         </button>
-                    </div>
-                </form>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     );
