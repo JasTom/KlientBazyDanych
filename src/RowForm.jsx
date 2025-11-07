@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import apiClient from './apiClient';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select as UISelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     const [formData, setFormData] = useState(editingRow ? { ...editingRow } : {});
@@ -468,17 +472,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
-            <div className="flex min-h-full items-center justify-center p-4">
-                <div className="flex w-full max-w-5xl max-w-[95vw] max-h-[calc(100vh-2rem)] flex-col rounded bg-white shadow-lg overflow-x-hidden">
-                    <div className="flex items-center justify-between border-b px-4 py-3">
-                    <h5 className="text-lg font-semibold">
-                        {editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}
-                    </h5>
-                    <button type="button" aria-label="Zamknij" className="rounded p-2 text-gray-500 hover:bg-gray-100" onClick={onClose}>×</button>
-                    </div>
-                    <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col">
-                        <div className="flex-1 overflow-y-auto overflow-x-auto px-4 py-3">
+        <Dialog open>
+            <DialogContent className="max-w-5xl max-h-[calc(100vh-2rem)] overflow-hidden">
+                <DialogHeader>
+                    <DialogTitle>{editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col">
+                    <div className="flex-1 overflow-y-auto overflow-x-auto px-1 py-1 md:px-2 md:py-2">
                         {error && (
                             <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
                                 Błąd: {error}
@@ -511,7 +511,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                         </label>
 
                                         {isBasicText && (
-                                            <input
+                                            <Input
                                                 type={fieldType.includes('number') ? 'number' : fieldType.includes('email') ? 'email' : fieldType.includes('url') ? 'url' : fieldType.includes('phone') ? 'tel' : 'text'}
                                                 className={inputClass}
                                                 value={fieldValue}
@@ -521,7 +521,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                         )}
 
                                         {isDate && (
-                                            <input
+                                            <Input
                                                 type={column.date_include_time ? 'datetime-local' : 'date'}
                                                 className={inputClass}
                                                 value={fieldValue ? new Date(fieldValue).toISOString().slice(0, column.date_include_time ? 16 : 10) : ''}
@@ -531,30 +531,28 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                         )}
 
                                         {isBoolean && (
-                                            <select
-                                                className={selectClass}
-                                                value={fieldValue}
-                                                onChange={(e) => handleFormChange(fieldName, e.target.value === 'true')}
-                                                required={column.primary}
-                                            >
-                                                <option value="">Wybierz...</option>
-                                                <option value="true">Tak</option>
-                                                <option value="false">Nie</option>
-                                            </select>
+                                            <UISelect value={fieldValue === true ? 'true' : fieldValue === false ? 'false' : ''} onValueChange={(v) => handleFormChange(fieldName, v === 'true')}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Wybierz..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="true">Tak</SelectItem>
+                                                    <SelectItem value="false">Nie</SelectItem>
+                                                </SelectContent>
+                                            </UISelect>
                                         )}
 
                                         {isSingleSelect && (
-                                            <select
-                                                className={selectClass}
-                                                value={getSelectValue(fieldValue, 'single_select')}
-                                                onChange={(e) => handleSelectChange(fieldName, 'single_select', e.target.value, column)}
-                                                required={column.primary}
-                                            >
-                                                <option value="">Wybierz opcję...</option>
-                                                {(column.select_options || []).map((option) => (
-                                                    <option key={option.id} value={option.id}>{option.value}</option>
-                                                ))}
-                                            </select>
+                                            <UISelect value={String(getSelectValue(fieldValue, 'single_select') || '')} onValueChange={(v) => handleSelectChange(fieldName, 'single_select', v, column)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Wybierz opcję..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {(column.select_options || []).map((option) => (
+                                                        <SelectItem key={option.id} value={String(option.id)}>{option.value}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </UISelect>
                                         )}
 
                                         {isMultipleSelect && (
@@ -622,22 +620,18 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                         const singleValue = (Array.isArray(fieldValue) ? fieldValue[0] : fieldValue);
                                                         const singleId = singleValue && typeof singleValue === 'object' && singleValue.id ? String(singleValue.id) : (singleValue ? String(singleValue) : '');
                                                         return (
-                                                            <select
-                                                                className={selectClass}
-                                                                value={singleId}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    handleFormChange(fieldName, val ? parseInt(val) : null);
-                                                                }}
-                                                                required={column.primary}
-                                                            >
-                                                                <option value="">Wybierz opcję...</option>
-                                                                {rows.map((r) => (
-                                                                    <option key={r.id} value={r.id}>
-                                                                        {r[primaryFieldName] || 'ID: ' + r.id}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                            <UISelect value={singleId} onValueChange={(v) => handleFormChange(fieldName, v ? parseInt(v) : null)}>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Wybierz opcję..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {rows.map((r) => (
+                                                                        <SelectItem key={r.id} value={String(r.id)}>
+                                                                            {r[primaryFieldName] || 'ID: ' + r.id}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </UISelect>
                                                         );
                                                     })()
                                                 )}
@@ -684,19 +678,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                 );
                             })}
                         </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
-                        <button type="button" className={btnSecondary} onClick={onClose} disabled={loading}>
-                            Anuluj
-                        </button>
-                        <button type="submit" className={btnPrimary} disabled={loading}>
-                            {loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}
-                        </button>
-                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Anuluj</Button>
+                        <Button type="submit" disabled={loading}>{loading ? 'Zapisywanie...' : (editingRow ? 'Zapisz zmiany' : 'Dodaj wiersz')}</Button>
+                    </DialogFooter>
                     </form>
-                </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

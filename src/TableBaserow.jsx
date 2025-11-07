@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import apiClient from './apiClient';
 import RowForm from './RowForm';
 import { fetchUserPermissionsByTable, hasAnyViewPermission } from './permissionsApi';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const TableBaserow = ({ tableId, tableName }) => {
     const [columns, setColumns] = useState([]);
@@ -473,19 +475,18 @@ const TableBaserow = ({ tableId, tableName }) => {
             <div className="mb-3 flex items-center justify-between">
                 <h1 className="m-0 text-xl font-semibold">{tableName}</h1>
                 <div className="flex max-w-[60%] items-center gap-2">
-                    <input
-                        className="min-w-[180px] rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    <Input
+                        className="min-w-[180px]"
                         value={search}
                         onChange={(e) => { setPage(1); setSearch(e.target.value); }}
                         placeholder="Szukaj..."
                     />
                     {canCreate && (
-                        <button className="inline-flex items-center rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700" onClick={openAddForm}>
+                        <Button className="bg-green-600 hover:bg-green-700" onClick={openAddForm}>
                             + Dodaj wiersz
-                        </button>
+                        </Button>
                     )}
-                    <button
-                        className="relative inline-flex items-center rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    <Button variant="outline"
                         onClick={() => setControlsOpen(v => !v)}
                         aria-expanded={controlsOpen}
                         aria-controls="filtersCollapse"
@@ -498,7 +499,7 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 title="Aktywne sortowanie lub filtr"
                             />
                         )}
-                    </button>
+                    </Button>
                 </div>
             </div>
             <div className="mb-3 rounded border" id="filtersCollapse">
@@ -549,16 +550,16 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 </div>
                                 <div className="col-span-12 sm:col-span-6 md:col-span-4">
                                     <label className="mb-1 block text-sm font-medium">Wartość</label>
-                                    <input className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterOp} placeholder="wartość (zgodnie z API)" />
+                                    <Input className="w-full" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterOp} placeholder="wartość (zgodnie z API)" />
                                 </div>
                                 <div className="col-span-12 sm:col-span-6 md:col-span-2">
-                                    <button className="w-full rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50" disabled={!filterField || !filterOp} onClick={() => {
+                                    <Button variant="outline" className="w-full" disabled={!filterField || !filterOp} onClick={() => {
                                         const next = [...filtersList, { field: filterField, type: filterOp, value: filterValue }];
                                         setFiltersList(next);
                                         rebuildFiltersJson(next, filterType);
                                         setPage(1);
                                         setFilterValue('');
-                                    }}>Dodaj filtr</button>
+                                    }}>Dodaj filtr</Button>
                                 </div>
                             </div>
                             {filtersList.length > 0 && (
@@ -583,7 +584,7 @@ const TableBaserow = ({ tableId, tableName }) => {
                             )}
                         </div>
                         <div className="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-2">
-                            <button className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => { setSearch(''); setOrderField(''); setOrderDir('asc'); setFilterType('AND'); setFiltersJson(''); setFiltersList([]); setFilterField(''); setFilterOp(''); setFilterValue(''); setPage(1); }}>Wyczyść</button>
+                            <Button variant="outline" className="w-full" onClick={() => { setSearch(''); setOrderField(''); setOrderDir('asc'); setFilterType('AND'); setFiltersJson(''); setFiltersList([]); setFilterField(''); setFilterOp(''); setFilterValue(''); setPage(1); }}>Wyczyść</Button>
                         </div>
                     </div>
                 </div>
@@ -643,14 +644,10 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 <td style={{ width: 120, textAlign: 'center' }}>
                                     <div className="inline-flex gap-2">
                                         {canUpdate && (
-                                            <button className="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50" onClick={() => openEditForm(row)} title="Edytuj">
-                                                ✏️
-                                            </button>
+                                            <Button variant="outline" onClick={() => openEditForm(row)} title="Edytuj">✏️</Button>
                                         )}
                                         {canDelete && (
-                                            <button className="rounded border border-red-600 px-2 py-1 text-red-600 hover:bg-red-50" onClick={() => deleteRow(row.id)} title="Usuń">
-                                                🗑️
-                                            </button>
+                                            <Button variant="outline" onClick={() => deleteRow(row.id)} title="Usuń">🗑️</Button>
                                         )}
                                     </div>
                                 </td>
@@ -665,8 +662,8 @@ const TableBaserow = ({ tableId, tableName }) => {
                     <span>Strona {page} z {Math.max(1, Math.ceil(count / Math.max(1, size)))}</span>
                 </div>
                 <div className="inline-flex gap-2">
-                    <button className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Poprzednia</button>
-                    <button className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</button>
+                    <Button variant="outline" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Poprzednia</Button>
+                    <Button variant="outline" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</Button>
                 </div>
             </div>
 
