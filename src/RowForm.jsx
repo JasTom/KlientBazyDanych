@@ -86,7 +86,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
 
         try {
             // Pobierz kolumny powiązanej tabeli
-            const columnsResponse = await apiClient.get(`/database/fields/table/${column.link_row_table_id}/`, {
+            const columnsResponse = await apiClient.get('/database/fields/table/' + column.link_row_table_id + '/', {
                 headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
             });
             const linkedColumns = columnsResponse.data || [];
@@ -101,7 +101,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             let hasMore = true;
 
             while (hasMore) {
-                const response = await apiClient.get(`/database/rows/table/${column.link_row_table_id}/?user_field_names=true&page=${page}&size=${pageSize}`, {
+                const response = await apiClient.get('/database/rows/table/' + column.link_row_table_id + '/?user_field_names=true&page=' + page + '&size=' + pageSize, {
                     headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${column.link_row_table_id}`) ?? localStorage.getItem(`tok_${tableId}`) ?? '' }
                 });
                 const rows = response.data.results || [];
@@ -224,9 +224,9 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         if (selectedRows.length === 0) {
             return 'Wybierz opcje...';
         } else if (selectedRows.length === 1) {
-            return selectedRows[0][primaryFieldName] || `ID: ${selectedRows[0].id}`;
+            return selectedRows[0][primaryFieldName] || ('ID: ' + selectedRows[0].id);
         } else {
-            return `Wybrano ${selectedRows.length} opcji`;
+            return 'Wybrano ' + selectedRows.length + ' opcji';
         }
     };
 
@@ -237,7 +237,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
         
         const primaryFieldName = linkRowData[fieldName]?.primaryFieldName || 'id';
         return rows.filter(row => {
-            const displayText = (row[primaryFieldName] || `ID: ${row.id}`).toString().toLowerCase();
+            const displayText = (row[primaryFieldName] || ('ID: ' + row.id)).toString().toLowerCase();
             return displayText.includes(searchTerm.toLowerCase());
         });
     };
@@ -447,13 +447,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
             
             if (editingRow) {
                 // Edycja istniejącego wiersza
-                const response = await apiClient.patch(`/database/rows/table/${tableId}/${editingRow.id}/?user_field_names=true`, cleanedData, {
+                const response = await apiClient.patch('/database/rows/table/' + tableId + '/' + editingRow.id + '/?user_field_names=true', cleanedData, {
                     headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
                 });
                 onSuccess('updated', response.data);
             } else {
                 // Dodawanie nowego wiersza
-                const response = await apiClient.post(`/database/rows/table/${tableId}/?user_field_names=true`, cleanedData, {
+                const response = await apiClient.post('/database/rows/table/' + tableId + '/?user_field_names=true', cleanedData, {
                     headers: { 'X-Baserow-Token-Index': localStorage.getItem(`tok_${tableId}`) ?? '' }
                 });
                 onSuccess('created', response.data);
@@ -468,7 +468,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div className="w-full max-w-5xl rounded bg-white shadow-lg">
                 <div className="flex items-center justify-between border-b px-4 py-3">
                     <h5 className="text-lg font-semibold">
@@ -660,14 +660,14 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                             return (
                                                                                 <div
                                                                                     key={option.id}
-                                                                                    className={`flex cursor-pointer items-center p-2 ${isSelected ? 'bg-gray-100' : ''}`}
+                                                                                    className={"flex cursor-pointer items-center p-2 " + (isSelected ? 'bg-gray-100' : '')}
                                                                                     onClick={() => toggleOptionSelection(fieldName, option.id)}
                                                                                 >
                                                                                     <input
                                                                                         type="checkbox"
                                                                                         className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                         checked={isSelected}
-                                                                                        onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                        onChange={() => {}}
                                                                                         readOnly
                                                                                     />
                                                                                     <span 
@@ -751,7 +751,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                 removeSelectedRow(fieldName, row.id);
                                                                             }}
                                                                         >
-                                                                            {row[primaryFieldName] || `ID: ${row.id}`}
+                                                                            {row[primaryFieldName] || ('ID: ' + row.id)}
                                                                             {allowsMultiple && <span style={{ cursor: 'pointer' }}>×</span>}
                                                                         </span>
                                                                     ));
@@ -807,13 +807,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                 return item;
                                                                             });
                                                                             const isSelected = ids.includes(row.id);
-                                                                            const displayText = row[primaryFieldName] || `ID: ${row.id}`;
+                                                                            const displayText = row[primaryFieldName] || ('ID: ' + row.id);
                                                                             const allowsMultiple = column.link_row_multiple_relationships !== false;
                                                                             
                                                                             return (
                                                                                 <div
                                                                                     key={row.id}
-                                                                                    className={`flex cursor-pointer items-center p-2 ${isSelected ? 'bg-gray-100' : ''}`}
+                                                                                    className={"flex cursor-pointer items-center p-2 " + (isSelected ? 'bg-gray-100' : '')}
                                                                                     onClick={() => {
                                                                                         if (allowsMultiple) {
                                                                                             toggleRowSelection(fieldName, row.id);
@@ -829,7 +829,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                             type="checkbox"
                                                                                             className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                             checked={isSelected}
-                                                                                            onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                            onChange={() => {}}
                                                                                             readOnly
                                                                                         />
                                                                                     ) : (
@@ -837,7 +837,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                                                                             type="radio"
                                                                                             className="mr-2 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                                             checked={isSelected}
-                                                                                            onChange={() => {}} // Obsługiwane przez onClick na div
+                                                                                            onChange={() => {}}
                                                                                             readOnly
                                                                                         />
                                                                                     )}
