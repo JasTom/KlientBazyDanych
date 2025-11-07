@@ -470,7 +470,7 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50">
             <div className="flex min-h-full items-center justify-center p-4">
-                <div className="flex w-full max-w-5xl max-h-[calc(100vh-2rem)] flex-col rounded bg-white shadow-lg">
+                <div className="flex w-full max-w-5xl max-w-[95vw] max-h-[calc(100vh-2rem)] flex-col rounded bg-white shadow-lg overflow-x-hidden">
                     <div className="flex items-center justify-between border-b px-4 py-3">
                     <h5 className="text-lg font-semibold">
                         {editingRow ? 'Edytuj wiersz' : 'Dodaj nowy wiersz'}
@@ -478,13 +478,13 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                     <button type="button" aria-label="Zamknij" className="rounded p-2 text-gray-500 hover:bg-gray-100" onClick={onClose}>×</button>
                     </div>
                     <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col">
-                        <div className="flex-1 overflow-y-auto px-4 py-3">
+                        <div className="flex-1 overflow-y-auto overflow-x-auto px-4 py-3">
                         {error && (
                             <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
                                 Błąd: {error}
                             </div>
                         )}
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
                             {columns.map((column) => {
                                 const fieldName = column.name;
                                 const fieldValue = formData[fieldName] || '';
@@ -504,8 +504,8 @@ const RowForm = ({ tableId, columns, editingRow, onClose, onSuccess }) => {
                                 const isReadonly = (column.read_only || fieldType.includes('auto_number'));
 
                                 return (
-                                    <div key={column.id}>
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <div key={column.id} className="min-w-0">
+                                        <label className="mb-1 block max-w-full break-words text-sm font-medium text-gray-700">
                                             {column.name}
                                             {column.primary && <span className="ml-1 text-red-600">*</span>}
                                         </label>
