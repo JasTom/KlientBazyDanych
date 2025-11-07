@@ -241,7 +241,7 @@ const TableBaserow = ({ tableId, tableName }) => {
         // Boolean
         if (typeof raw === 'boolean' || type.includes('boolean')) {
             const val = typeof raw === 'boolean' ? raw : String(raw).toLowerCase() === 'true';
-            return <span className={`badge ${val ? 'text-bg-success' : 'text-bg-secondary'}`}>{val ? 'Tak' : 'Nie'}</span>;
+            return <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs ${val ? 'bg-green-600 text-white' : 'bg-gray-500 text-white'}`}>{val ? 'Tak' : 'Nie'}</span>;
         }
         // Daty/czasy
         if (type.includes('date') || type.includes('created') || type.includes('modified')) {
@@ -272,14 +272,14 @@ const TableBaserow = ({ tableId, tableName }) => {
         // Single select
         if (type.includes('single_select')) {
             const label = formatCellValue(raw);
-            return <span className="badge text-bg-info">{label}</span>;
+            return <span className="inline-flex items-center rounded bg-cyan-600 px-2 py-0.5 text-xs text-white">{label}</span>;
         }
         // Multiple select
         if (type.includes('multiple_select')) {
             return (
                 <span>
                     {asArray(raw).map((opt, idx) => (
-                        <span key={idx} className="badge text-bg-info me-1">{formatCellValue(opt)}</span>
+                        <span key={idx} className="mr-1 inline-flex items-center rounded bg-cyan-600 px-2 py-0.5 text-xs text-white">{formatCellValue(opt)}</span>
                     ))}
                 </span>
             );
@@ -296,7 +296,7 @@ const TableBaserow = ({ tableId, tableName }) => {
         if (type.includes('file')) {
             const files = asArray(raw);
             return (
-                <div className="d-flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                     {files.map((f, idx) => {
                         const thumb = f?.thumbnails?.small?.url || f?.thumbnails?.tiny?.url || null;
                         const src = thumb || defaultThumb;
@@ -427,7 +427,7 @@ const TableBaserow = ({ tableId, tableName }) => {
 
     if (loading || permLoading) return <div>Ładowanie...</div>;
     if (error) return <div>Błąd: {error}</div>;
-    if (!canView) return <div className="alert alert-warning m-3">Brak uprawnień do podglądu tej tabeli.</div>;
+    if (!canView) return <div className="m-3 rounded border border-yellow-200 bg-yellow-50 px-3 py-2 text-yellow-800">Brak uprawnień do podglądu tej tabeli.</div>;
     // Funkcje formularza
     const openAddForm = () => {
         setEditingRow(null);
@@ -467,109 +467,92 @@ const TableBaserow = ({ tableId, tableName }) => {
         }
     };
 
+    const hasSortOrFilter = Boolean(orderField) || filtersList.length > 0 || Boolean(search.trim());
     return (
-        <div className="container-fluid my-4">
-            <div className="d-flex align-items-center justify-content-between mb-3">
-                <h1 className="h4 mb-0">{tableName}</h1>
-                <div className="d-flex align-items-center gap-2" style={{ maxWidth: '60%' }}>
+        <div className="my-4 mx-auto max-w-[95vw] px-4">
+            <div className="mb-3 flex items-center justify-between">
+                <h1 className="m-0 text-xl font-semibold">{tableName}</h1>
+                <div className="flex max-w-[60%] items-center gap-2">
                     <input
-                        className="form-control form-control-sm"
-                        style={{ minWidth: 180 }}
+                        className="min-w-[180px] rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         value={search}
                         onChange={(e) => { setPage(1); setSearch(e.target.value); }}
                         placeholder="Szukaj..."
                     />
                     {canCreate && (
-                        <button className="btn btn-success btn-sm" onClick={openAddForm}>
+                        <button className="inline-flex items-center rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700" onClick={openAddForm}>
                             + Dodaj wiersz
                         </button>
                     )}
-                    {(() => {
-                        const hasSortOrFilter = Boolean(orderField) || filtersList.length > 0 || Boolean(search.trim());
-                        return (
-                            <button
-                                className="btn btn-outline-secondary position-relative"
-                                onClick={() => setControlsOpen(v => !v)}
-                                aria-expanded={controlsOpen}
-                                aria-controls="filtersCollapse"
-                            >
-                                {controlsOpen ? 'Ukryj wyszukiwanie' : 'Pokaż wyszukiwanie'}
-                                {hasSortOrFilter && (
-                                    <span
-                                        style={{
-                                            position: 'absolute',
-                                            top: 6,
-                                            right: 6,
-                                            width: 10,
-                                            height: 10,
-                                            borderRadius: '50%',
-                                            backgroundColor: '#dc3545'
-                                        }}
-                                        aria-label="Aktywne sortowanie lub filtr"
-                                        title="Aktywne sortowanie lub filtr"
-                                    />
-                                )}
-                            </button>
-                        );
-                    })()}
+                    <button
+                        className="relative inline-flex items-center rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setControlsOpen(v => !v)}
+                        aria-expanded={controlsOpen}
+                        aria-controls="filtersCollapse"
+                    >
+                        {controlsOpen ? 'Ukryj wyszukiwanie' : 'Pokaż wyszukiwanie'}
+                        {hasSortOrFilter && (
+                            <span
+                                style={{ position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: '50%', backgroundColor: '#dc3545' }}
+                                aria-label="Aktywne sortowanie lub filtr"
+                                title="Aktywne sortowanie lub filtr"
+                            />
+                        )}
+                    </button>
                 </div>
             </div>
-            <div className="card mb-3" id="filtersCollapse">
-                <div className={`card-body ${controlsOpen ? '' : 'd-none'}`}>
-                    <div className="row g-2 align-items-end">
-                        <div className="col-sm-6 col-md-4 col-lg-3">
-                            <label className="form-label">Sortuj po</label>
-                            <select className="form-select" value={orderField} onChange={(e) => { setPage(1); setOrderField(e.target.value); }}>
+            <div className="mb-3 rounded border" id="filtersCollapse">
+                <div className={`${controlsOpen ? '' : 'hidden'} p-3`}>
+                    <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-12 sm:col-span-6 md:col-span-4 lg:col-span-3">
+                            <label className="mb-1 block text-sm font-medium">Sortuj po</label>
+                            <select className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={orderField} onChange={(e) => { setPage(1); setOrderField(e.target.value); }}>
                                 <option value="">(brak)</option>
                                 {columns.map(col => (
                                     <option key={col.id} value={col.name}>{col.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="col-sm-6 col-md-2 col-lg-2">
-                            <label className="form-label d-block">Kierunek</label>
-                            <div className="btn-group w-100" role="group">
-                                <button type="button" className={`btn btn-outline-secondary ${orderDir === 'asc' ? 'active' : ''}`} onClick={() => { setPage(1); setOrderDir('asc'); }}>A-Z</button>
-                                <button type="button" className={`btn btn-outline-secondary ${orderDir === 'desc' ? 'active' : ''}`} onClick={() => { setPage(1); setOrderDir('desc'); }}>Z-A</button>
+                        <div className="col-span-12 sm:col-span-6 md:col-span-2 lg:col-span-2">
+                            <label className="mb-1 block text-sm font-medium">Kierunek</label>
+                            <div className="inline-flex w-full overflow-hidden rounded border border-gray-300">
+                                <button type="button" className={`px-3 py-2 text-sm ${orderDir === 'asc' ? 'bg-gray-100' : 'bg-white'}`} onClick={() => { setPage(1); setOrderDir('asc'); }}>A-Z</button>
+                                <button type="button" className={`border-l border-gray-300 px-3 py-2 text-sm ${orderDir === 'desc' ? 'bg-gray-100' : 'bg-white'}`} onClick={() => { setPage(1); setOrderDir('desc'); }}>Z-A</button>
                             </div>
                         </div>
                         
-                        <div className="col-sm-6 col-md-3 col-lg-2">
-                            <label className="form-label">Rozmiar strony</label>
-                            <select className="form-select" value={size} onChange={(e) => { setPage(1); setSize(Number(e.target.value)); }}>
+                        <div className="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-2">
+                            <label className="mb-1 block text-sm font-medium">Rozmiar strony</label>
+                            <select className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={size} onChange={(e) => { setPage(1); setSize(Number(e.target.value)); }}>
                                 {[10,20,50,100,200].map(opt => (
                                     <option key={opt} value={opt}>{opt}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="col-12">
-                            <div className="row g-2 align-items-end">
-                                <div className="col-sm-6 col-md-3">
-                                    <label className="form-label">Pole</label>
-                                    <select className="form-select" value={filterField} onChange={(e) => { setFilterField(e.target.value); setFilterOp(''); }}>
+                        <div className="col-span-12">
+                            <div className="grid grid-cols-12 gap-2 items-end">
+                                <div className="col-span-12 sm:col-span-6 md:col-span-3">
+                                    <label className="mb-1 block text-sm font-medium">Pole</label>
+                                    <select className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={filterField} onChange={(e) => { setFilterField(e.target.value); setFilterOp(''); }}>
                                         <option value="">(wybierz pole)</option>
                                         {columns.map(col => (
                                             <option key={col.id} value={col.name}>{col.name}</option>
                                         ))}
                                     </select>
                                 </div>
-                                <div className="col-sm-6 col-md-3">
-                                    <label className="form-label">Operator</label>
-                                    <select className="form-select" value={filterOp} onChange={(e) => setFilterOp(e.target.value)} disabled={!filterField}>
+                                <div className="col-span-12 sm:col-span-6 md:col-span-3">
+                                    <label className="mb-1 block text-sm font-medium">Operator</label>
+                                    <select className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={filterOp} onChange={(e) => setFilterOp(e.target.value)} disabled={!filterField}>
                                         <option value="">(wybierz operator)</option>
-                                        {(() => {
-                                            const col = columns.find(c => c.name === filterField);
-                                            const ops = getOpsForType(col?.type);
-                                            return ops.map(op => <option key={op} value={op}>{op}</option>);
-                                        })()}
+                                        {getOpsForType(columns.find(c => c.name === filterField)?.type).map(op => <option key={op} value={op}>{op}</option>)}
                                     </select>
                                 </div>
-                                <div className="col-sm-6 col-md-4">
-                                    <label className="form-label">Wartość</label>
-                                    <input className="form-control" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterOp} placeholder="wartość (zgodnie z API)" />
+                                <div className="col-span-12 sm:col-span-6 md:col-span-4">
+                                    <label className="mb-1 block text-sm font-medium">Wartość</label>
+                                    <input className="w-full rounded border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={filterValue} onChange={(e) => setFilterValue(e.target.value)} disabled={!filterOp} placeholder="wartość (zgodnie z API)" />
                                 </div>
-                                <div className="col-sm-6 col-md-2 d-grid">
-                                    <button className="btn btn-outline-primary" disabled={!filterField || !filterOp} onClick={() => {
+                                <div className="col-span-12 sm:col-span-6 md:col-span-2">
+                                    <button className="w-full rounded border border-blue-600 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-50" disabled={!filterField || !filterOp} onClick={() => {
                                         const next = [...filtersList, { field: filterField, type: filterOp, value: filterValue }];
                                         setFiltersList(next);
                                         rebuildFiltersJson(next, filterType);
@@ -579,16 +562,16 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 </div>
                             </div>
                             {filtersList.length > 0 && (
-                                <div className="mt-2 d-flex align-items-center flex-wrap gap-2">
-                                    <label className="form-label me-2 mb-0">Typ łączenia</label>
-                                    <select className="form-select form-select-sm w-auto" value={filterType} onChange={(e) => { setFilterType(e.target.value); rebuildFiltersJson(filtersList, e.target.value); setPage(1); }}>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <label className="mb-0 mr-2 text-sm font-medium">Typ łączenia</label>
+                                    <select className="w-auto rounded border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" value={filterType} onChange={(e) => { setFilterType(e.target.value); rebuildFiltersJson(filtersList, e.target.value); setPage(1); }}>
                                         <option value="AND">AND</option>
                                         <option value="OR">OR</option>
                                     </select>
                                     {filtersList.map((f, idx) => (
-                                        <span key={idx} className="badge text-bg-secondary">
+                                        <span key={idx} className="inline-flex items-center rounded bg-gray-600 px-2 py-0.5 text-xs text-white">
                                             {f.field} {f.type} {String(f.value)}
-                                            <button type="button" className="btn btn-sm btn-link text-white ms-2 p-0" onClick={() => {
+                                            <button type="button" className="ml-2 text-white" onClick={() => {
                                                 const next = filtersList.filter((_, i) => i !== idx);
                                                 setFiltersList(next);
                                                 rebuildFiltersJson(next, filterType);
@@ -599,8 +582,8 @@ const TableBaserow = ({ tableId, tableName }) => {
                                 </div>
                             )}
                         </div>
-                        <div className="col-sm-6 col-md-3 col-lg-2 d-flex gap-2">
-                            <button className="btn btn-outline-secondary w-100" onClick={() => { setSearch(''); setOrderField(''); setOrderDir('asc'); setFilterType('AND'); setFiltersJson(''); setFiltersList([]); setFilterField(''); setFilterOp(''); setFilterValue(''); setPage(1); }}>Wyczyść</button>
+                        <div className="col-span-12 sm:col-span-6 md:col-span-3 lg:col-span-2">
+                            <button className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onClick={() => { setSearch(''); setOrderField(''); setOrderDir('asc'); setFilterType('AND'); setFiltersJson(''); setFiltersList([]); setFilterField(''); setFilterOp(''); setFilterValue(''); setPage(1); }}>Wyczyść</button>
                         </div>
                     </div>
                 </div>
@@ -615,9 +598,9 @@ const TableBaserow = ({ tableId, tableName }) => {
                 <div style={{ width: scrollContentWidth || '100%', height: 1 }} />
             </div>
             {/* Sticky header synced horizontally */}
-            <div ref={headerScrollRef} className="table-responsive" style={{ overflowX: 'hidden', overflowY: 'hidden', marginBottom: 0, padding: 0, scrollbarGutter: 'stable both-edges' }}>
-                <table ref={headerTableRef} className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
-                    <thead className="table-dark text-center">
+            <div ref={headerScrollRef} style={{ overflowX: 'hidden', overflowY: 'hidden', marginBottom: 0, padding: 0, scrollbarGutter: 'stable both-edges' }}>
+                <table ref={headerTableRef} className="mb-0 w-full text-sm" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
+                    <thead className="bg-gray-800 text-center text-white">
                         <tr>
                             {columns.map(column => (
                                 <th
@@ -626,7 +609,7 @@ const TableBaserow = ({ tableId, tableName }) => {
                                     className="align-middle"
                                     style={{ position: 'relative', width: columnWidths[column.name] ? `${columnWidths[column.name]}px` : undefined, minWidth: 60, top: 0 }}
                                 >
-                                    <span className="me-2" title={column.type || ''}>{getTypeIcon(column)}</span>
+                                    <span className="mr-2" title={column.type || ''}>{getTypeIcon(column)}</span>
                                     {column.name}
                                     <span
                                         onMouseDown={(e) => handleResizeMouseDown(column.name, e)}
@@ -643,8 +626,8 @@ const TableBaserow = ({ tableId, tableName }) => {
                 </table>
             </div>
 
-            <div ref={tableScrollRef} onScroll={syncFromTable} className="table-responsive" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable both-edges', marginTop: 0, padding: 0 }}>
-                <table className="table table-striped table-bordered table-hover table-sm align-middle mb-0" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
+            <div ref={tableScrollRef} onScroll={syncFromTable} style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 300px)', scrollbarGutter: 'stable both-edges', marginTop: 0, padding: 0 }}>
+                <table className="mb-0 w-full text-sm" style={{ tableLayout: 'fixed', width: scrollContentWidth ? `${scrollContentWidth}px` : '100%' }}>
                     <tbody>
                         {rows.map(row => (
                             <tr
@@ -658,14 +641,14 @@ const TableBaserow = ({ tableId, tableName }) => {
                                     </td>
                                 ))}
                                 <td style={{ width: 120, textAlign: 'center' }}>
-                                    <div className="btn-group btn-group-sm">
+                                    <div className="inline-flex gap-2">
                                         {canUpdate && (
-                                            <button className="btn btn-outline-primary" onClick={() => openEditForm(row)} title="Edytuj">
+                                            <button className="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50" onClick={() => openEditForm(row)} title="Edytuj">
                                                 ✏️
                                             </button>
                                         )}
                                         {canDelete && (
-                                            <button className="btn btn-outline-danger" onClick={() => deleteRow(row.id)} title="Usuń">
+                                            <button className="rounded border border-red-600 px-2 py-1 text-red-600 hover:bg-red-50" onClick={() => deleteRow(row.id)} title="Usuń">
                                                 🗑️
                                             </button>
                                         )}
@@ -676,14 +659,14 @@ const TableBaserow = ({ tableId, tableName }) => {
                     </tbody>
             </table>
             </div>
-            <div className="d-flex justify-content-between align-items-center mt-2">
+            <div className="mt-2 flex items-center justify-between">
                 <div>
-                    <span className="me-2">Razem: {count}</span>
+                    <span className="mr-2">Razem: {count}</span>
                     <span>Strona {page} z {Math.max(1, Math.ceil(count / Math.max(1, size)))}</span>
                 </div>
-                <div className="btn-group">
-                    <button className="btn btn-outline-secondary" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Poprzednia</button>
-                    <button className="btn btn-outline-secondary" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</button>
+                <div className="inline-flex gap-2">
+                    <button className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Poprzednia</button>
+                    <button className="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50" disabled={page >= Math.ceil(count / Math.max(1, size))} onClick={() => setPage(p => p + 1)}>Następna</button>
                 </div>
             </div>
 
